@@ -3,7 +3,8 @@
 
 ## Project Conventions
 
-See CONVENTIONS.md
+See [Conventions](CONVENTIONS.md)
+
 ## Project Overview
 
 This project aims to overcome the limitations of drone payload capacities by employing a cooperative approach, where two drones work together to carry packages with cables. By harnessing the synergy between advanced drone hardware and algorithmic innovation, we seek to push the boundaries of urban aerial mobility.
