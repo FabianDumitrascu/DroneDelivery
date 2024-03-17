@@ -48,6 +48,7 @@ Branches in our repository follow a clear naming pattern that describes their pu
 - `hotfix/` for urgent fixes (e.g., `hotfix/critical-security-issue`).
 - `release/` for release preparation (e.g., `release/v1.0.1`).
 - `docs/` for documentation updates (e.g., `docs/api-endpoints`).
+- `test/` for testing ideas out (e.g., `test/new-control-algorithm`).
 
 ### Including Ticket Numbers
 - Include ticket numbers for better tracking (e.g., `feature/T-123-new-login-system`).
