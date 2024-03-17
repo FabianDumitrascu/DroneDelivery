@@ -1,6 +1,10 @@
 
 # Cooperative Drone Delivery with Cables
 
+## Project Conventions
+
+See [Conventions](CONVENTIONS.md)
+
 ## Project Overview
 
 This project aims to overcome the limitations of drone payload capacities by employing a cooperative approach, where two drones work together to carry packages with cables. By harnessing the synergy between advanced drone hardware and algorithmic innovation, we seek to push the boundaries of urban aerial mobility.
@@ -21,6 +25,6 @@ Our mission is to design, build, and implement a system enabling two quadrotor d
 - **Control Algorithm Design and Simulation**: Creating centralized control algorithms to manage the cooperative flight of the drones and conducting preliminary tests in virtual environments like RViz/Gazebo.
 - **Real-World Implementation and Testing**: Applying the developed control algorithms in real-world flight tests to achieve precise payload delivery and waypoint tracking, supported by motion capture technology for enhanced accuracy.
 
-protection not working
+
 
 
