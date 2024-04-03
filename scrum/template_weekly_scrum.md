@@ -12,7 +12,7 @@
 
 - [Insert Sprint Goal]
 
-### User Stories
+### Issues
 
 - [List of User Stories for the Sprint]
 
