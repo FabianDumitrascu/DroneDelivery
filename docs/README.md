@@ -3,7 +3,7 @@
 
 ## Project Conventions
 
-See [Conventions](CONVENTIONS.md)
+See [Conventions](CONVENTIONS.md).
 
 ## Project Overview
 
