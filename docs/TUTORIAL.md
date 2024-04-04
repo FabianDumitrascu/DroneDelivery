@@ -8,7 +8,7 @@ So you are screaming at your computer screen and you can't figure where you went
 2.
 
 
-## Cloning GitHub Repository
+# Cloning GitHub Repository
 ### Step 1 (opening user settings)
 
 
@@ -39,4 +39,26 @@ Rename your token whatever fits the description best. And make sure that you hav
 ![Token generation](Figures/Tutorial_1/screenshot_token_code.png)
 
 `Copy this code` and `store it` in a safe place (you will **need this later on**).
+
+### Step 6 (copy HTTPS code)
+
+![HTTPS code](Figures/Tutorial_1/screenshot_https.png)
+
+Navigate to the `cooperative-drone-delivery` GitHub and copy the **HTTPS code**
+
+```https://github.com/FabianDumitrascu/Cooperative-Drone-Delivery-Cables.git```
+
+### Step 7 (navigate to desired directory)
+
+`Navigate inside your terminal` to your desired directory and type: 
+
+```git clone https://github.com/FabianDumitrascu/Cooperative-Drone-Delivery-Cables.git```
+
+then type your **GitHub username** and afterwards fill in your token when having to type your password `password = (replace with your token)`
+
+## Well done
+
+Now you can use GIT command when you are inside of the GIT folder. Use for example `GIT status` to show your current branch and any uncommitted files.
+
+![Michael handshake](Figures/Tutorial_1/meme_handshake_michael.png)
 
