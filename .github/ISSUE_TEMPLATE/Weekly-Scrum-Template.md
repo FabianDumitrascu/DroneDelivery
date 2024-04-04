@@ -1,9 +1,9 @@
 ---
-Name: Scrum Template Name
-About: Use this template to create new scrums
-Title: ""
-Labels: ""
-Assignees: ""
+name: Standard Scrum Template
+about: Use this template to create new issues
+title: ""
+labels: ""
+assignees: ""
 ---
 
 ## Scrum Meeting Outline:
