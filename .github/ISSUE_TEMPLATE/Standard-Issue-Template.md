@@ -1,3 +1,11 @@
+---
+Name: Issue Template Name
+About: Use this template to create new issues
+Title: ""
+Labels: ""
+Assignees: ""
+---
+
 ## Issue Outline:
 
 ### 1. Title:

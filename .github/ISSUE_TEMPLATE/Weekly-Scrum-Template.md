@@ -1,3 +1,11 @@
+---
+Name: Scrum Template Name
+About: Use this template to create new scrums
+Title: ""
+Labels: ""
+Assignees: ""
+---
+
 ## Scrum Meeting Outline:
 
 ### 1. Project Overview:
