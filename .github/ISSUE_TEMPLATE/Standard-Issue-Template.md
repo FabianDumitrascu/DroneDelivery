@@ -1,5 +1,5 @@
 ---
-Name: AI Roommate's Issue Template
+Name: Issue Template Name
 About: Use this template to create new issues
 Title: ""
 Labels: ""
