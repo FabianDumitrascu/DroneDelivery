@@ -1,3 +1,11 @@
+---
+Name: AI Roommate's Issue Template
+About: Use this template to create new issues
+Title: ""
+Labels: ""
+Assignees: ""
+---
+
 ## Issue Outline:
 
 ### 1. Title:
