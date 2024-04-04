@@ -39,14 +39,3 @@ A detailed account of the issue including:
 - **Priority**: e.g., low, medium, high, urgent.
 
 - **Sprint**: Label with sprint number/name for easy filtering, like sprint-1, sprint-2.
-
-
-## Labels:
-
-- **Type**: bug, feature, enhancement, documentation
-
-- **Status**: awaiting-triage, in-progress, review-needed
-
-- **Priority**: low, medium, high, urgent
-
-- **Sprint**: sprint-1, sprint-2
