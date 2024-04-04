@@ -16,13 +16,27 @@ assignees: ""
 
 ### 2. Past Week - Sprint Review:
 
-#### Completed Issues:
+#### Issues from Previous Weeks:
 
-- [List of Issues Completed During the Sprint]
+- Issue 1 - Description of Issue
+  - **Status:** 
+    - [ ] Done
+    - [ ] Failed
+  - **Problems Faced:** [Description of Problems Faced]
+- Issue 2 - Description of Issue
+  - **Status:** 
+    - [ ] Done
+    - [ ] Failed
+  - **Problems Faced:** [Description of Problems Faced]
+- Issue 3 - Description of Issue
+  - **Status:** 
+    - [ ] Done
+    - [ ] Failed
+  - **Problems Faced:** [Description of Problems Faced]
 
 #### Demo and Feedback:
 
-- [Feedback Received from Stakeholders or Product Owner]
+- [Feedback Received from supervisors]
 
 #### Sprint Retrospective:
 
@@ -34,11 +48,31 @@ assignees: ""
 
 #### Sprint Goal:
 
-- [Insert Sprint Goal]
+- [General goals for the upcoming week]
+  
+#### Issues for this week:
 
-#### Issues:
-
-- [List of Issues for the Sprint]
+- Issue 4 - Description of Issue
+  - **Assignee:** 
+    - [ ] Bob
+    - [ ] Fabian
+    - [ ] Thijmen
+    - [ ] Ruben
+  - **Comments:** [Description of Problems Faced]
+- Issue 5 - Description of Issue
+  - **Assignee:** 
+    - [ ] Bob
+    - [ ] Fabian
+    - [ ] Thijmen
+    - [ ] Ruben
+  - **Comments:** [Description of Problems Faced]
+- Issue 6 - Description of Issue
+  - **Assignee:** 
+    - [ ] Bob
+    - [ ] Fabian
+    - [ ] Thijmen
+    - [ ] Ruben
+  - **Comments:** [Description of Problems Faced]
 
 #### Sprint Backlog:
 
