@@ -1,48 +1,52 @@
----
-name: Standard issue template
-about: This is the standard way we create issues
-title: ''
-labels: not looked at yet
-assignees: ''
+## Issue Outline:
 
----
+### 1. Title:
+Clear and concise, summarizing the issue content.
 
-## Issue Template: Sub-Problem Breakdown
+### 2. Description:
+A detailed account of the issue including:
 
-### Title: [Short Description of the Sub-Problem]
+- **Background**: Context or problem statement.
 
-**Problem Overview**:  
-[Briefly describe the specific sub-problem or task related to the larger project goal.]
+- **Objective**: What the issue aims to achieve.
 
-**Objective**:  
-[Clearly define what success looks like for this issue. What are you trying to achieve?]
+- **Acceptance Criteria**: Specific requirements or conditions that must be met.
 
-### Background
-[Provide any necessary background information that helps explain why this sub-problem exists and why it’s important to solve.]
+- **Steps to Reproduce**: If it’s a bug, provide steps to reproduce it.
 
-### Dependencies
-[List any dependencies this task has, such as needing data from another task, or requiring certain technologies to be in place.]
+- **Screenshots/Logs**: Visuals or data to illustrate the problem, if applicable.
 
-### Detailed Task List
-- [ ] **Task 1**: [Description of the specific action/item.]
-- [ ] **Task 2**: [Description of the next action/item.]
-- [ ] **Task 3**: [And so on.]
+- **Dependencies**: Reference any related issues or tasks.
 
-### Required Resources
-- **Data**: [What data is needed? From where?]
-- **Technologies/Tools**: [List any software, hardware, or tools required.]
-- **Expertise**: [Specify if specialized knowledge or skills are needed.]
+- **Notes**: Any other relevant information.
 
-### Estimated Timeframe
-- **Start Date**: [YYYY-MM-DD]
-- **End Date**: [YYYY-MM-DD]
 
-### Task Difficulty Rating
-- **Rating**: [1-8] (1 being an easy task for one developer, and 8 being a very hard task for multiple developers)
+### Estimating Effort:
 
-### Assignees
-- **Lead**: [Team member responsible for driving the task to completion]
-- **Contributors**: [Other team members who will work on this task]
+- **Use Story Points**: Assign points based on complexity, effort, and uncertainty. A common scale is Fibonacci-like sequence (1, 2, 3, 5, 8, 13, etc.).
 
-### Additional Notes
-[Any other relevant information, such as reference materials, communication channels for discussing this issue, etc.]
+- **T-Shirt Sizes**: Assign sizes (XS, S, M, L, XL) if numerical points feel too granular.
+
+- **Time Estimates**: Allocate hours or days if the team prefers time-based estimates.
+
+
+### Creating Relevant Labels:
+
+- **Type**: e.g., bug, feature, enhancement, documentation.
+
+- **Status**: e.g., awaiting-triage, in-progress, review-needed.
+
+- **Priority**: e.g., low, medium, high, urgent.
+
+- **Sprint**: Label with sprint number/name for easy filtering, like sprint-1, sprint-2.
+
+
+## Labels:
+
+- **Type**: bug, feature, enhancement, documentation
+
+- **Status**: awaiting-triage, in-progress, review-needed
+
+- **Priority**: low, medium, high, urgent
+
+- **Sprint**: sprint-1, sprint-2
