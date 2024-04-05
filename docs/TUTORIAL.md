@@ -5,7 +5,7 @@ So you are screaming at your computer screen and you can't figure where you went
 
 ## Table of Content
 1. [Cloning GitHub Repository](#cloning-github-repository)
-2.
+2. [Accessing Agilicious container](#accessing-agilicious-container)
 
 
 # Cloning GitHub Repository
@@ -72,6 +72,14 @@ Before being able to go on to the next steps we have to make sure you are able t
 
 This section also assumes that you have docker installed. Docker installation guide click [here](https://docs.docker.com/engine/install/linux-postinstall/).
 
+### Step 0 (create a catkin workspace)
+
+First of all lets remove your old catkin_ws with:
+- `cd && rm -rf catkin_ws` 
+
+Lets create your catkin_ws now:
+- `mkdir -p ~/catkin_ws/src`
+
 ### Step 1 (Clone and navigate)
 Clone the agiclean repository in your desired folder and navigate into it with `cd agiclean/`, then make sure the **clone** has been succesfull by doing `ls`
 ![Clone and navigate](Figures/Tutorial_2/ss_git_clone_and_cd_agiclean.png)
@@ -94,4 +102,43 @@ an example on my computer looked like this:
 
 ### Step 3 (building docker image)
 
-While being inside of your cloned agiliclean directory you should 
+While being inside of your cloned agiclean directory you should  run the following command:
+
+```sudo docker build --tag "ros_agilicious:latest" .``` 
+
+Don't forget to also copy the ''.'' character at the end (''.'' stands for current directory.)
+
+### Step 4 (starting up your agilicious container)
+
+When running 
+
+`./scripts/launch_container.sh <path_to_catkin_ws> <path_to_agiclean_repository>` 
+
+we have two variables we have to add. Namely the path to your **catkin workspace**. In my case my path is: `~/catkin_ws` and my path to agiclean repository is: `~/Documents/FabianGIT/agiclean`
+
+So to run agilicious container my commands would be:
+
+- `cd ~/Documents/FabianGIT/agiclean` this makes sure I am in the root directory of my cloned agiclean GIT repository.
+
+- `./scripts/launch_container.sh ~/catkin_ws ~/Documents/FabianGIT/agiclean` this runs the launch_container which takes me into the agilicious container.
+
+### Step 5 (build your catkin workspace)
+
+Run the following commands:
+
+- `cd ~/catkin_ws`
+- `catkin build`
+
+### Step 6 (source your catkin workspace)
+
+Run: `source ~/catkin_ws/devel/setup.bash`
+
+### Step 7 (have fun)
+
+Well done you correctly set everything up. Try using the following command to start a RViz flight simulation
+
+- `roslaunch agiros agisim.launch`
+
+<img src="Figures/Tutorial_2/be_root_meme.png" alt="Be root meme" width="400"/>
+
+
