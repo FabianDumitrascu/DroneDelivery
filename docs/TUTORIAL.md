@@ -62,3 +62,36 @@ Now you can use GIT command when you are inside of the GIT folder. Use for examp
 
 ![Michael handshake](Figures/Tutorial_1/meme_handshake_michael.png)
 
+# Accessing agilicious container
+
+## Introduction
+
+Before being able to go on to the next steps we have to make sure you are able to launch your agilicious docker environment. This section assumes that you have cloned the agiclean repository as described [here](#cloning-github-repository), follow these steps, but with the agiclean repository: 
+
+```git clone https://github.com/FabianDumitrascu/agiclean.git```
+
+This section also assumes that you have docker installed. Docker installation guide click [here](https://docs.docker.com/engine/install/linux-postinstall/).
+
+### Step 1 (Clone and navigate)
+Clone the agiclean repository in your desired folder and navigate into it with `cd agiclean/`, then make sure the **clone** has been succesfull by doing `ls`
+![Clone and navigate](Figures/Tutorial_2/ss_git_clone_and_cd_agiclean.png)
+
+### Step 2 (optional, but recommended)
+
+In this step you will delete all your previous containers/images ***do not dot his step if you have any important work done inside these containers!***
+
+- First of all run `docker container prune`
+- Then run `docker images` and copy the **IMAGE ID** of all the images you want to remove. (An image ID looks something like this: `4f443811b07b`)
+- Remove all images you want with 
+
+`docker rmi -f replace_this_with_image_id replace_this_with_image_id2` 
+
+an example on my computer looked like this: 
+
+`docker rmi -f 4f443811b07b 51473eb4f8cf`
+
+- Now double check if the images have been removed by running: `docker images`
+
+### Step 3 (building docker image)
+
+While being inside of your cloned agiliclean directory you should 
