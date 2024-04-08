@@ -84,10 +84,10 @@ Lets create your catkin_ws now:
 Clone the agiclean repository in your desired folder and navigate into it with `cd agiclean/`, then make sure the **clone** has been succesfull by doing `ls`
 ![Clone and navigate](Figures/Tutorial_2/ss_git_clone_and_cd_agiclean.png)
 
-The git clone might not clone 'catkin_simple' correctly. Inside your 'catkin_ws' folder, cd to your 'catkin_simple' folder and list its components with 'ls'. If you don't see anything, delete the 'catkin_simple' folder. Go back to your 'catkin_ws' folder and type the following command:
-'git clone https://github.com/catkin/catkin_simple'
+The git clone might not clone `catkin_simple` correctly. Inside your `catkin_ws` folder, cd to your `catkin_simple` folder and list its components with `ls`. If you don't see anything, delete the `catkin_simple` folder. Go back to your `catkin_ws` folder and type the following command:
+`git clone https://github.com/catkin/catkin_simple`
 
-Check if the 'catkin_simple' folder has components.
+Check if the `catkin_simple` folder has components.
 
 ### Step 2 (optional, but recommended)
 
