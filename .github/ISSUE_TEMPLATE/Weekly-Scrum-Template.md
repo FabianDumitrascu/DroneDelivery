@@ -19,16 +19,19 @@ assignees: ""
 #### Issues from Previous Weeks:
 
 - Issue 1 - Description of Issue
+  - **assignee(s):**
   - **Status:** 
     - [ ] Done
     - [ ] Failed
   - **Problems Faced:** [Description of Problems Faced]
 - Issue 2 - Description of Issue
+  - **assignee(s):**
   - **Status:** 
     - [ ] Done
     - [ ] Failed
   - **Problems Faced:** [Description of Problems Faced]
 - Issue 3 - Description of Issue
+  - **assignee(s):**
   - **Status:** 
     - [ ] Done
     - [ ] Failed
