@@ -6,6 +6,7 @@ So you are screaming at your computer screen and you can't figure where you went
 ## Table of Content
 1. [Cloning GitHub Repository](#cloning-github-repository)
 2. [Accessing Agilicious container](#accessing-agilicious-container)
+3. [Agilicious Topics and commands](#agilicious-topics-and-commands)
 
 
 # Cloning GitHub Repository
@@ -145,5 +146,9 @@ Well done you correctly set everything up. Try using the following command to st
 - `roslaunch agiros agisim.launch`
 
 <img src="Figures/Tutorial_2/be_root_meme.png" alt="Be root meme" width="400"/>
+
+# Agilicious Topics and Commands
+
+## Test your commands (optional step)
 
 
