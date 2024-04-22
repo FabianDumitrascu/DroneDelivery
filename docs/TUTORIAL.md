@@ -151,10 +151,54 @@ Well done you correctly set everything up. Try using the following command to st
 
 ## Introduction
 
-In this section we will go over some basic commands inside agilicious. After this section you should be able to send custom commands to your drone inside of Gazebo and
+In this section we will go over some basic commands inside agilicious. After this section you should be able to send custom commands to your drone inside of Gazebo and see it act accordingly.
 
 ## Test your commands (optional step)
 
-T
+In this step we are going to start an instance of a basic simulation. First of all make sure you are inside of your agilicious Docker environment. Then run the following command: `roslaunch agiros simulation.launch gui:=true`
+
+From this point on two things could happen: either you get a black screen, a lot of error messages or your simulation will work. In the case that things are not working **do control C inside of your terminal** (this will close Gazebo) and basically just redo `roslaunch agiros simulation.launch gui:=true`. We don't know for sure why it works the second time you are running this command, but let's just roll with it.
+
+## Step 1 (Opening terminal and checking setup)
+
+Have your Gazebo simulation running on the background.
+
+Open a clean, new terminal. This will be the terminal where you will send your commands. In this terminal open your **launch_container.sh** and go inside of your agilicious docker environment. 
+
+From this point fact-check that you have topics running in the background by running `rostopic list`. Now you should see a screen full of topics you can publish to like shown below.
+
+<img src="Figures/Tutorial_3/tutorial3_rostopic_list.png" alt="Be root meme"/>
+
+## Commands List
+
+- `rostopic pub /kingfisher/agiros_pilot/start std_msgs/Empty "{}"`
+    - This command makes your drone go to it's starting position which is (x,y,z) = (0,0,1)
+
+- `rostopic pub /kingfisher/agiros_pilot/go_to_pose geometry_msgs/PoseStamped "header:
+  seq: 0
+  stamp:
+    secs: 0
+    nsecs: 0
+  frame_id: ''
+pose:
+  position:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  orientation:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.0" `
+
+    - With this command you can send your drone to a specifix position with a specifix orientation.
+
+- `rostopic echo /gazebo/model_states`
+
+
+
+
+
+
 
 
