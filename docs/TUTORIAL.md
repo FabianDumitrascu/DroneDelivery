@@ -149,6 +149,12 @@ Well done you correctly set everything up. Try using the following command to st
 
 # Agilicious Topics and Commands
 
+## Introduction
+
+In this section we will go over some basic commands inside agilicious. After this section you should be able to send custom commands to your drone inside of Gazebo and
+
 ## Test your commands (optional step)
+
+T
 
 
