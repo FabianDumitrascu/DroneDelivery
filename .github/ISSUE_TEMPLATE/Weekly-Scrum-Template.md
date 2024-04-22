@@ -19,16 +19,21 @@ assignees: ""
 #### Issues from Previous Weeks:
 
 - Issue 1 - Description of Issue
+  - **assignee(s):**
   - **Status:** 
     - [ ] Done
     - [ ] Failed
   - **Problems Faced:** [Description of Problems Faced]
+  
 - Issue 2 - Description of Issue
+  - **assignee(s):**
   - **Status:** 
     - [ ] Done
     - [ ] Failed
   - **Problems Faced:** [Description of Problems Faced]
+    
 - Issue 3 - Description of Issue
+  - **assignee(s):**
   - **Status:** 
     - [ ] Done
     - [ ] Failed
@@ -59,6 +64,7 @@ assignees: ""
     - [ ] Thijmen
     - [ ] Ruben
   - **Comments:** [Description of Problems Faced]
+    
 - Issue 5 - Description of Issue
   - **Assignee:** 
     - [ ] Bob
@@ -66,6 +72,7 @@ assignees: ""
     - [ ] Thijmen
     - [ ] Ruben
   - **Comments:** [Description of Problems Faced]
+    
 - Issue 6 - Description of Issue
   - **Assignee:** 
     - [ ] Bob
@@ -77,3 +84,9 @@ assignees: ""
 #### Sprint Backlog:
 
 - [List of Tasks Associated with Each Issue]
+
+#### Turfen:
+Bob:
+Fabian: |
+Ruben:
+Thijmen:
