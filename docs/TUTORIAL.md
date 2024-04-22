@@ -174,22 +174,8 @@ From this point fact-check that you have topics running in the background by run
 - `rostopic pub /kingfisher/agiros_pilot/start std_msgs/Empty "{}"`
     - This command makes your drone go to it's starting position which is (x,y,z) = (0,0,1)
 
-- `rostopic pub /kingfisher/agiros_pilot/go_to_pose geometry_msgs/PoseStamped "header:
-  seq: 0
-  stamp:
-    secs: 0
-    nsecs: 0
-  frame_id: ''
-pose:
-  position:
-    x: 0.0
-    y: 0.0
-    z: 0.0
-  orientation:
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 0.0" `
+- `rostopic pub /kingfisher/agiros_pilot/go_to_pose geometry_msgs/PoseStamped '{header: {seq: 0, stamp: {secs: 0, nsecs: 0}, frame_id: ""}, pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}'
+`
 
     - With this command you can send your drone to a specifix position with a specifix orientation.
 
