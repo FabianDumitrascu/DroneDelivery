@@ -7,6 +7,7 @@ So you are screaming at your computer screen and you can't figure where you went
 1. [Cloning GitHub Repository](#cloning-github-repository)
 2. [Accessing Agilicious container](#accessing-agilicious-container)
 3. [Agilicious Topics and commands](#agilicious-topics-and-commands)
+4. [Useful Linux Terminal Shortcuts](#useful-linux-terminal-shortcuts)
 
 
 # Cloning GitHub Repository
@@ -174,26 +175,39 @@ From this point fact-check that you have topics running in the background by run
 - `rostopic pub /kingfisher/agiros_pilot/start std_msgs/Empty "{}"`
     - This command makes your drone go to it's starting position which is (x,y,z) = (0,0,1)
 
-- `rostopic pub /kingfisher/agiros_pilot/go_to_pose geometry_msgs/PoseStamped "header:
-  seq: 0
-  stamp:
-    secs: 0
-    nsecs: 0
-  frame_id: ''
-pose:
-  position:
-    x: 0.0
-    y: 0.0
-    z: 0.0
-  orientation:
-    x: 0.0
-    y: 0.0
-    z: 0.0
-    w: 0.0" `
+- `rostopic pub /kingfisher/agiros_pilot/go_to_pose geometry_msgs/PoseStamped '{header: {seq: 0, stamp: {secs: 0, nsecs: 0}, frame_id: ""}, pose: {position: {x: 0.0, y: 0.0, z: 0.0}, orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}}}'
+`
 
     - With this command you can send your drone to a specifix position with a specifix orientation.
 
 - `rostopic echo /gazebo/model_states`
+
+
+# Useful Linux Terminal Shortcuts
+
+| Shortcut          | Description                                          |
+|-------------------|------------------------------------------------------|
+| `Ctrl` + `A`      | Move to the start of the line.                       |
+| `Ctrl` + `E`      | Move to the end of the line.                         |
+| `Ctrl` + `U`      | Delete from the cursor to the start of the line.     |
+| `Ctrl` + `K`      | Delete from the cursor to the end of the line.       |
+| `Ctrl` + `W`      | Delete the word before the cursor.                   |
+| `Ctrl` + `L`      | Clear the terminal screen.                           |
+| `Ctrl` + `C`      | Stop the current process/command.                    |
+| `Ctrl` + `D`      | Log out or exit the terminal.                        |
+| `Ctrl` + `Z`      | Pause the current process (can be resumed).          |
+| `Ctrl` + `R`      | Search command history (backward search).            |
+| `Up Arrow`        | Show the previous command (from the command history).|
+| `Down Arrow`      | Show the next command (from the command history).    |
+| `!!`              | Repeat the last command.                             |
+| `!n`              | Repeat the nth command from history.                 |
+| `Tab`             | Auto-complete commands, files, or directories.       |
+| `Tab` twice       | List all possible completions.                       |
+| `Ctrl` + `Shift` + `C` | Copy the selected text or command.             |
+| `Ctrl` + `Shift` + `V` | Paste copied text or command.                 |
+| `Ctrl` + `Shift` + `N` | Open a new terminal window.                     |
+| `Ctrl` + `Shift` + `T` | Open a new tab in the terminal.                |
+| `Ctrl` + `Tab` or `Ctrl` + `PageDown` | Switch between terminal tabs.    |
 
 
 
