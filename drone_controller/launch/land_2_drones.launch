@@ -1,0 +1,17 @@
+<launch>
+    <!-- Default arguments -->
+    <arg name="drone_name_1" default="kingfisher"/>
+    <arg name="drone_name_2" default="kingfisher1"/>
+
+    <!-- Node forTakeoff-->
+    <group ns = "BEP">
+        <node name="land"
+            pkg="drone_controller"
+            type="land_node"
+            output="screen">
+            <param name="drone_name_1" value="$(arg drone_name_1)" />
+            <param name="drone_name_2" value="$(arg drone_name_2)" />
+        </node>
+    </group>
+</launch>
+

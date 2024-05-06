@@ -1,0 +1,27 @@
+<launch>
+    <!-- Default arguments -->
+    <arg name="drone_id" default="kingfisher"/>
+    <arg name="target_x" default="0.0"/>
+    <arg name="target_y" default="0.0" />
+    <arg name="target_z" default="5.0" />
+    <arg name="kp" default="0.1" />
+    <arg name="ki" default="0.01" />
+    <arg name="kd" default="0.05" />
+
+    <!-- Node for Apollo1 -->
+    <group ns = "BEP">
+        <node name="apollo1"
+            pkg="drone_controller"
+            type="apollo1_node"
+            output="screen">
+            <param name="drone_id" value="$(arg drone_id)" />
+            <param name="target_x" value="$(arg target_x)" />
+            <param name="target_y" value="$(arg target_y)" />
+            <param name="target_z" value="$(arg target_z)" />
+            <param name="kp" value="$(arg kp)" />
+            <param name="ki" value="$(arg ki)" />
+            <param name="kd" value="$(arg kd)" />
+        </node>
+    </group>
+</launch>
+
