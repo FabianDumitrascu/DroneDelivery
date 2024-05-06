@@ -3,7 +3,8 @@
 #include "geometry_msgs/TwistStamped.h"
 #include <cmath>
 #include <sstream>
-
+#include <thread>
+#include <chrono>
 class PIDController {
 private:
     double Kp, Ki, Kd;
@@ -39,7 +40,7 @@ public:
 int main(int argc, char** argv) {
     ros::init(argc, argv, "command_node");
     ros::NodeHandle nh;  // No namespace is used here
-
+    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wacht 1 seconden voor takeoff
     // Parameters for target position and PID coefficients
     std::string drone_id1, drone_id2;
     double target_x, target_y, target_z, kp, ki, kd;

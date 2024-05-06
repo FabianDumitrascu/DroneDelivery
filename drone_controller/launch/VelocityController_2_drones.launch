@@ -15,16 +15,10 @@
     <arg name="kd" default="0.05"/>
 
     <!-- Node for Command-->
+    <!-- Include the takeoff launch file -->
+    <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
+    <!-- After takeoff, initiate the Velocity control -->
     <group ns="BEP">
-
-        <node name="takeoff"
-              pkg="drone_controller"
-              type="takeoff_node"
-              output="screen">
-            <param name="drone_name_1" value="$(arg drone_name_1)" />
-            <param name="drone_name_2" value="$(arg drone_name_2)" />
-        </node>
-
         <node name="command_node_2_pos"
               pkg="drone_controller"
               type="command_node_2_pos"

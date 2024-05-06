@@ -4,6 +4,8 @@
 #include "nav_msgs/Odometry.h"
 #include <string>
 #include <cmath>
+#include <thread>
+#include <chrono>
 
 // Globale variabelen om de huidige positie op te slaan
 geometry_msgs::Point current_position_falcon, current_position_falcon1;
@@ -29,7 +31,7 @@ bool isPositionReached(const geometry_msgs::Point& current, const geometry_msgs:
 int main(int argc, char **argv) {
     ros::init(argc, argv, "position_commander");
     ros::NodeHandle nh;
-
+    std::this_thread::sleep_for(std::chrono::seconds(3)); // Wacht 3 seconden voor takeoff
     std::string drone_id1, drone_id2;
     nh.getParam("/BEP/Position_node/drone_id1", drone_id1);
     nh.getParam("/BEP/Position_node/drone_id2", drone_id2);

@@ -11,16 +11,11 @@
     <arg name="target_y1" default="0.0"/>
     <arg name="target_z1" default="2.0"/>
     <!-- Node for Command-->
+    <!-- Include the takeoff launch file -->
+    <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
+
+    <!-- After takeoff, initiate the position control -->
     <group ns="BEP">
-
-        <node name="takeoff"
-              pkg="drone_controller"
-              type="takeoff_node"
-              output="screen">
-            <param name="drone_name_1" value="$(arg drone_name_1)" />
-            <param name="drone_name_2" value="$(arg drone_name_2)" />
-        </node>
-
         <node name="Position_node"
               pkg="drone_controller"
               type="Position_node"
@@ -36,3 +31,4 @@
         </node>
     </group>
 </launch>
+
