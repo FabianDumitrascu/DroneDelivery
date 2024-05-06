@@ -1,4 +1,0 @@
-[submodule "agiclean"]
-	path = agiclean
-	url = https://github.com/tud-amr/agiclean.git
-	branch = bep_2024
