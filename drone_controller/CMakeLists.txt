@@ -39,6 +39,10 @@ target_link_libraries(command_node ${catkin_LIBRARIES})
 add_executable(Position_node src/PositionController_2_drones.cpp)
 target_link_libraries(Position_node ${catkin_LIBRARIES})
 
-# Command 2 drones diff position Node
+# Command 2 drones velocity controller Node
 add_executable(command_node_2_pos src/VelocityController_2_drones.cpp)
 target_link_libraries(command_node_2_pos ${catkin_LIBRARIES})
+
+# Command 2 drones position controller Turn Node
+add_executable(Position_turn_node src/PositionController_turn.cpp)
+target_link_libraries(Position_turn_node ${catkin_LIBRARIES})

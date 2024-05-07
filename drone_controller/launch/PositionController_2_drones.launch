@@ -4,16 +4,15 @@
     <arg name="drone_id2" default="$(arg drone_id1)1"/> 
     <arg name="drone_name_1" default="falcon"/>
     <arg name="drone_name_2" default="$(arg drone_name_1)1"/>
-    <arg name="target_x" default="0.0"/>
-    <arg name="target_y" default="0.0"/>
-    <arg name="target_z" default="2.0"/>
-    <arg name="target_x1" default="1.0"/>
-    <arg name="target_y1" default="0.0"/>
-    <arg name="target_z1" default="2.0"/>
+    <arg name="target_x" default="2.0"/>
+    <arg name="target_y" default="1.0"/>
+    <arg name="target_z" default="1.0"/>
+    <arg name="target_x1" default="2.0"/>
+    <arg name="target_y1" default="-1.0"/>
+    <arg name="target_z1" default="1.0"/>
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
     <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
-
     <!-- After takeoff, initiate the position control -->
     <group ns="BEP">
         <node name="Position_node"

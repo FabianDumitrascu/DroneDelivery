@@ -31,7 +31,7 @@ bool isPositionReached(const geometry_msgs::Point& current, const geometry_msgs:
 int main(int argc, char **argv) {
     ros::init(argc, argv, "position_commander");
     ros::NodeHandle nh;
-    std::this_thread::sleep_for(std::chrono::seconds(3)); // Wacht 3 seconden voor takeoff
+    std::this_thread::sleep_for(std::chrono::seconds(27)); // Wacht 3 seconden voor takeoff
     std::string drone_id1, drone_id2;
     nh.getParam("/BEP/Position_node/drone_id1", drone_id1);
     nh.getParam("/BEP/Position_node/drone_id2", drone_id2);
@@ -59,12 +59,13 @@ int main(int argc, char **argv) {
         pose_falcon.header.stamp = ros::Time::now();
         pose_falcon.header.frame_id = "world";
         pose_falcon.pose.position = target_position;
-        pose_falcon.pose.orientation.w = 1.0;
-
+        pose_falcon.pose.orientation.w = sin(0.25*M_PI);
+        pose_falcon.pose.orientation.z = sin(0.25*M_PI);
         pose_falcon1.header.stamp = ros::Time::now();
         pose_falcon1.header.frame_id = "world";
         pose_falcon1.pose.position = target_position1;
-        pose_falcon1.pose.orientation.w = 1.0;
+        pose_falcon1.pose.orientation.w = sin(0.25*M_PI);
+        pose_falcon1.pose.orientation.z = sin(0.25*M_PI);
 
         pose_pub_falcon.publish(pose_falcon);
         pose_pub_falcon1.publish(pose_falcon1);

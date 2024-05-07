@@ -10,18 +10,13 @@
     <arg name="target_x1" default="2.0"/>
     <arg name="target_y1" default="-1.0"/>
     <arg name="target_z1" default="1.0"/>
-    <arg name="kp" default="1.0"/>
-    <arg name="ki" default="0.01"/>
-    <arg name="kd" default="0.05"/>
-
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
-    <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
-    <!-- After takeoff, initiate the Velocity control -->
+    <include file="$(find drone_controller)/launch/PositionController_turn.launch" />
     <group ns="BEP">
-        <node name="command_node_2_pos"
+        <node name="Position_node"
               pkg="drone_controller"
-              type="command_node_2_pos"
+              type="Position_node"
               output="screen">
             <param name="drone_id1" value="$(arg drone_id1)"/>
             <param name="drone_id2" value="$(arg drone_id2)"/>
@@ -31,9 +26,7 @@
             <param name="target_x1" value="$(arg target_x1)"/>
             <param name="target_y1" value="$(arg target_y1)"/>
             <param name="target_z1" value="$(arg target_z1)"/>
-            <param name="kp" value="$(arg kp)"/>
-            <param name="ki" value="$(arg ki)"/>
-            <param name="kd" value="$(arg kd)"/>
         </node>
     </group>
 </launch>
+
