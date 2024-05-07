@@ -1,9 +1,10 @@
 ---
 name: Standard Issue Template
 about: Use this template to create new issues
-title: ""
-labels: ""
-assignees: ""
+title: ''
+labels: ''
+assignees: ''
+
 ---
 
 ## Issue Outline:
