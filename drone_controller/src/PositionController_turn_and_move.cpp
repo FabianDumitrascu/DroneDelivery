@@ -7,7 +7,7 @@
 
 class CirclePathController {
 public:
-    CirclePathController() : initial_angle_set(false), num_initial_positions_received(0), centerX(0.0), centerY(0.0), centerZ(1.0) {
+    CirclePathController() : initial_angle_set(false), num_initial_positions_received(0), centerX(startX), centerY(startY), centerZ(1.0) {
         // Initialize ROS NodeHandle
         nh = ros::NodeHandle("~");
 
@@ -26,7 +26,7 @@ public:
         pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/falcon1/agiros_pilot/go_to_pose", 10);
 
         // Timer setup
-        timer = nh.createTimer(ros::Duration(0.1), &CirclePathController::updateCallback, this, false, false);
+        timer = nh.createTimer(ros::Duration(0.5), &CirclePathController::updateCallback, this, false, false);
     }
 
 private:
@@ -38,13 +38,16 @@ private:
     bool initial_angle_set;
     int num_initial_positions_received;
     double centerX, centerY, centerZ;
+    double startX, startY; // New variables to store the initial centerX and centerY
     geometry_msgs::Point current_position_falcon, current_position_falcon1;
-    double degree_increment = 10;
+    double degree_increment = 15;
     void odometryCallbackFalcon(const nav_msgs::Odometry::ConstPtr& msg) {
         current_position_falcon = msg->pose.pose.position;
         if (++num_initial_positions_received == 2 && !initial_angle_set) {
             calculateInitialAngles();
         }
+        // Update startX with the middle x coordinate
+        startX = (current_position_falcon.x + current_position_falcon1.x) / 2;
     }
 
     void odometryCallbackFalcon1(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -52,6 +55,8 @@ private:
         if (++num_initial_positions_received == 2 && !initial_angle_set) {
             calculateInitialAngles();
         }
+        // Update startY with the middle y coordinate
+        startY = (current_position_falcon.y + current_position_falcon1.y) / 2;
     }
 
     void calculateInitialAngles() {
@@ -108,8 +113,8 @@ private:
         nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
 
         // Calculate increments for `centerX` and `centerY`
-        double increment_x = (target_x - centerX) / (end_angle_degrees / degree_increment);
-        double increment_y = (target_y - centerY) / (end_angle_degrees / degree_increment);
+        double increment_x = (target_x - centerX) / (90 / degree_increment);
+        double increment_y = (target_y - centerY) / (90 / degree_increment);
 
         // Update `centerX` and `centerY`
         centerX += increment_x;
