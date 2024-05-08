@@ -17,6 +17,8 @@
             <param name="drone_id1" value="$(arg drone_id1)"/>
             <param name="drone_id2" value="$(arg drone_id2)"/>
             <param name="end_angle_degrees" value="$(arg end_angle_degrees)"/>
+            <param name="target_x" value="$(arg target_x)"/>
+            <param name="target_y" value="$(arg target_y)"/>
         </node>
     </group>
 </launch>

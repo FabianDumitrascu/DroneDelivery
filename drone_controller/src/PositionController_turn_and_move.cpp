@@ -7,15 +7,21 @@
 
 class CirclePathController {
 public:
-    CirclePathController() : initial_angle_set(false), num_initial_positions_received(0), centerX(startX), centerY(startY), centerZ(1.0) {
+    CirclePathController() : initial_angle_set(false), num_initial_positions_received(0), 
+                             centerX(0.0), centerY(0.0), centerZ(1.0),
+                             startX(0.0), startY(0.0), target_x(2.0), target_y(2.0), degree_increment(30.0) {
         // Initialize ROS NodeHandle
         nh = ros::NodeHandle("~");
 
-        // Initialize the end_angle_degrees from ROS parameter server
+        // Retrieve the end_angle_degrees from the ROS parameter server
         if (!nh.getParam("end_angle_degrees", end_angle_degrees)) {
             ROS_WARN("Could not retrieve 'end_angle_degrees' from the parameter server; defaulting to 90 degrees");
             end_angle_degrees = 90.0;  // Default value if not set
         }
+
+        // Retrieve target coordinates
+        nh.getParam("/BEP/Position_turn_and_move_node/target_x", target_x);
+        nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
 
         // Subscribe to odometry topics
         odom_sub_falcon = nh.subscribe("/falcon/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon, this);
@@ -38,9 +44,11 @@ private:
     bool initial_angle_set;
     int num_initial_positions_received;
     double centerX, centerY, centerZ;
-    double startX, startY; // New variables to store the initial centerX and centerY
+    double startX, startY; // Store the initial center coordinates
+    double target_x, target_y; // Target coordinates
+    double degree_increment;
     geometry_msgs::Point current_position_falcon, current_position_falcon1;
-    double degree_increment = 15;
+
     void odometryCallbackFalcon(const nav_msgs::Odometry::ConstPtr& msg) {
         current_position_falcon = msg->pose.pose.position;
         if (++num_initial_positions_received == 2 && !initial_angle_set) {
@@ -60,8 +68,8 @@ private:
     }
 
     void calculateInitialAngles() {
-        double dx = current_position_falcon.x - centerX;
-        double dy = current_position_falcon.y - centerY;
+        double dx = current_position_falcon.x - startX;
+        double dy = current_position_falcon.y - startY;
         angle_degrees = atan2(dy, dx) * 180.0 / M_PI;
 
         initial_angle_set = true;
@@ -92,8 +100,8 @@ private:
             ROS_INFO("Reached end angle: %f degrees", angle_degrees);
             timer.stop(); // Stop the main timer to prevent further updates
 
-            // Set a one-time timer to shut down after 2 seconds
-            shutdown_timer = nh.createTimer(ros::Duration(10), [this](const ros::TimerEvent&) {
+            // Set a one-time timer to shut down after 10 seconds
+            shutdown_timer = nh.createTimer(ros::Duration(11), [this](const ros::TimerEvent&) {
                 ROS_INFO("Shutting down after delay.");
                 ros::shutdown();
             }, true); // true makes it a one-shot timer
@@ -108,13 +116,9 @@ private:
         double radius = 1.0;
         double angle_rad = degreesToRadians(angle_degrees);
 
-        double target_x = 2, target_y = 2;
-        nh.getParam("/BEP/Position_turn_and_move_node/target_x", target_x);
-        nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
-
         // Calculate increments for `centerX` and `centerY`
-        double increment_x = (target_x - centerX) / (90 / degree_increment);
-        double increment_y = (target_y - centerY) / (90 / degree_increment);
+        double increment_x = (target_x - startX) / (end_angle_degrees / degree_increment);
+        double increment_y = (target_y - startY) / (end_angle_degrees / degree_increment);
 
         // Update `centerX` and `centerY`
         centerX += increment_x;
@@ -153,8 +157,8 @@ private:
 
         ROS_INFO("Updated angle: %f", angle_degrees);
         ROS_INFO("Center position: x=%f, y=%f", centerX, centerY);
-        //ROS_INFO("Falcon position: x=%f, y=%f, z=%f", new_pose_falcon.pose.position.x, new_pose_falcon.pose.position.y, new_pose_falcon.pose.position.z);
-        //ROS_INFO("Falcon1 position: x=%f, y=%f, z=%f", new_pose_falcon1.pose.position.x, new_pose_falcon1.pose.position.y, new_pose_falcon1.pose.position.z);
+        ROS_INFO("Falcon position: x=%f, y=%f, z=%f", new_pose_falcon.pose.position.x, new_pose_falcon.pose.position.y, new_pose_falcon.pose.position.z);
+        ROS_INFO("Falcon1 position: x=%f, y=%f, z=%f", new_pose_falcon1.pose.position.x, new_pose_falcon1.pose.position.y, new_pose_falcon1.pose.position.z);
     }
 
     double degreesToRadians(double degrees) {
