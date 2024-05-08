@@ -31,7 +31,7 @@ bool isPositionReached(const geometry_msgs::Point& current, const geometry_msgs:
 int main(int argc, char **argv) {
     ros::init(argc, argv, "position_commander");
     ros::NodeHandle nh;
-    std::this_thread::sleep_for(std::chrono::seconds(27)); // Wacht 3 seconden voor takeoff
+    std::this_thread::sleep_for(std::chrono::seconds(22)); // Wacht 3 seconden voor takeoff
     std::string drone_id1, drone_id2;
     nh.getParam("/BEP/Position_node/drone_id1", drone_id1);
     nh.getParam("/BEP/Position_node/drone_id2", drone_id2);
