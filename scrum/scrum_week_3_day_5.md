@@ -30,18 +30,29 @@
 ### 3. Today - Sprint Review:
 
 #### Issues for Today:
-- Issue 1 - Description of Issue
-  - **assignee(s):**
+- Closes [#47](https://github.com/FabianDumitrascu/DroneDelivery/issues/47) - Rosnode/topic Development
+  - **assignee(s):** Fabian
+  - **Status:** 
+    - [x] Done
+    - [ ] Failed
+
+- Closes [#44](https://github.com/FabianDumitrascu/DroneDelivery/issues/44) - Turn and move controller
+  - **assignee(s):** Thijmen
+  - **Status:** 
+    - [x] Done
+    - [ ] Failed
+
+- Issue [#39](https://github.com/FabianDumitrascu/DroneDelivery/issues/39) - Attaching ropes to drone/bar
+  - **assignee(s):** Ruben
   - **Status:** 
     - [ ] Done
-    - [ ] Failed
-  - **Problems Faced:** [Description of Problems Faced]
+    - [x] Failed
 
 #### Sprint Retrospective:
 
-- **What Went Well:** [Positive Aspects of the Sprint]
-- **What Could Be Improved:** [Areas for Improvement]
-- **Action Items:** [List of Action Items for the Next Sprint]
+- **What Went Well:** Thijmen is a legend, he is the best person on earth he fixes the whole project by himself.
+- **What Could Be Improved:** Have physical meetings
+- **Action Items:** Make Issue for drones not colliding against eachother.
 
 Closes [#48](https://github.com/FabianDumitrascu/DroneDelivery/issues/48)
 Closes [#45](https://github.com/FabianDumitrascu/DroneDelivery/issues/45)
