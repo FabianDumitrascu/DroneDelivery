@@ -61,30 +61,34 @@ int main(int argc, char** argv) {
 
     // Parameters for target positions, PID coefficients, and yaw angles
     std::string drone_id1, drone_id2;
-    double target_x, target_y, target_z, kp, ki, kd;
-    double target_x1, target_y1, target_z1;
+    double target_x, target_y, target_z, kp, ki, kd, target_x1, target_y1, target_z1, Mid_x, Mid_y, Mid_z, Mid_yaw;
     double target_yaw, target_yaw1;
-
+    double radius = 1.0;
+    
     // Retrieve parameters using the private namespace
     nh.param<std::string>("drone_id1", drone_id1, "falcon");
     nh.param<std::string>("drone_id2", drone_id2, "falcon1");
-    nh.param<double>("target_x", target_x, 2.0);
-    nh.param<double>("target_y", target_y, 1.0);
-    nh.param<double>("target_z", target_z, 1.0);
-    nh.param<double>("target_x1", target_x1, 2.0);
-    nh.param<double>("target_y1", target_y1, -1.0);
-    nh.param<double>("target_z1", target_z1, 1.0);
+    nh.param<double>("Mid_x", Mid_x, 2.0);
+    nh.param<double>("Mid_y", Mid_y, 1.0);
+    nh.param<double>("Mid_z", Mid_z, 1.0);
     nh.param<double>("kp", kp, 1.0);
     nh.param<double>("ki", ki, 0.01);
     nh.param<double>("kd", kd, 0.05);
-    nh.param<double>("target_yaw", target_yaw, 0.0);
-    nh.param<double>("target_yaw1", target_yaw1, 0.0);
-
+    nh.param<double>("Mid_yaw", Mid_yaw, 0.0); // Modified line
+    double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
+    target_x = Mid_x + radius * cos(Mid_yaw_radians);
+    target_y = Mid_y + radius * sin(Mid_yaw_radians);
+    target_z = Mid_z;
+    target_x1 = Mid_x + radius * cos(Mid_yaw_radians + M_PI);
+    target_y1 = Mid_y + radius * sin(Mid_yaw_radians + M_PI);
+    target_z1 = Mid_z;
+    target_yaw = Mid_yaw_radians; 
+    target_yaw1 = Mid_yaw_radians;
     // Logging
     ROS_INFO("Drone ID 1: %s", drone_id1.c_str());
     ROS_INFO("Drone ID 2: %s", drone_id2.c_str());
     ROS_INFO("Target position: (%f, %f, %f)", target_x, target_y, target_z);
-    ROS_INFO("Target2 position: (%f, %f, %f)", target_x1, target_y1, target_z1);
+    ROS_INFO("Target1 position: (%f, %f, %f)", target_x1, target_y1, target_z1);
     ROS_INFO("Target yaw: %f, Target yaw1: %f", target_yaw, target_yaw1);
     ROS_INFO("PID Coefficients: Kp=%f, Ki=%f, Kd=%f", kp, ki, kd);
 
