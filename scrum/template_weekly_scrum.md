@@ -1,47 +1,36 @@
-# Week [id] scrum meeting
+## Scrum Meeting Outline:
 
-## Project Overview
+### 1. Project Overview:
 
-- **Scrum Master:** [Scrum Master's Name]
-- **Product Owner:** [Product Owner's Name]
-- **Development Team:** [List of Team Members]
+- **Scrum Master:** Fabian
+- **Date**: 10-5-2024
+### 2. Today- Sprint Planning:
 
-## Sprint Planning
+- Issue  - Description of Issue
+  - **Assignee:** 
+    - [ ] Bob
+    - [ ] Fabian
+    - [ ] Thijmen
+    - [ ] Ruben
 
-### Sprint Goal
+### 3. Today - Sprint Review:
 
-- [Insert Sprint Goal]
+#### Issues for Today:
+- Issue 1 - Description of Issue
+  - **assignee(s):**
+  - **Status:** 
+    - [ ] Done
+    - [ ] Failed
+  - **Problems Faced:** [Description of Problems Faced]
 
-### Issues
+#### Sprint Retrospective:
 
-- [List of User Stories for the Sprint]
+- **What Went Well:** [Positive Aspects of the Sprint]
+- **What Could Be Improved:** [Areas for Improvement]
+- **Action Items:** [List of Action Items for the Next Sprint]
 
-### Sprint Backlog
-
-- [List of Tasks Associated with Each User Story]
-
-
-## Sprint Review
-
-### Completed User Stories
-
-- [List of User Stories Completed During the Sprint]
-
-### Demo and Feedback
-
-- [Feedback Received from Stakeholders or Product Owner]
-
-## Sprint Retrospective
-
-### What Went Well
-
-- [Positive Aspects of the Sprint]
-
-### What Could Be Improved
-
-- [Areas for Improvement]
-
-### Action Items
-
-- [List of Action Items for the Next Sprint]
-
+#### Turfen:
+Bob:
+Fabian: 
+Ruben:
+Thijmen:
