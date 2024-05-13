@@ -44,7 +44,7 @@ private:
     bool initial_angle_set;
     int num_initial_positions_received;
     double centerX, centerY, centerZ;
-    double startX, startY; // Store the initial center coordinates
+    double startX, startY; // Store the initial de coordinates
     double target_x, target_y; // Target coordinates
     double degree_increment;
     geometry_msgs::Point current_position_falcon, current_position_falcon1;
