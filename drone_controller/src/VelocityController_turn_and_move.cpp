@@ -36,10 +36,11 @@ public:
         twist.linear.z = Kp * error_z + Ki * integral_z + Kd * derivative_z;
         return twist;
     }
-
+    double prev_error_yaw;
     double computeYawControl(double target_yaw, double current_yaw, double dt) {
         double error_yaw = normalizeAngle(target_yaw - current_yaw);
-        double yaw_rate = Kp * error_yaw; // Simplified for demonstration
+        prev_error_yaw = error_yaw;
+        double yaw_rate = Kp * error_yaw; 
         return yaw_rate;
     }
 
@@ -54,101 +55,144 @@ double getYawFromQuaternion(double x, double y, double z, double w) {
     return atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z));
 }
 
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "velocity_turn_and_move_node");
-    ros::NodeHandle nh("~");  // Private namespace NodeHandle
-    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait 4 seconds before takeoff
-
-    // Parameters for target positions, PID coefficients, and yaw angles
-    std::string drone_id1, drone_id2;
-    double target_x, target_y, target_z, kp, ki, kd, target_x1, target_y1, target_z1, Mid_x, Mid_y, Mid_z, Mid_yaw;
-    double target_yaw, target_yaw1;
-    double radius = 1.0;
-    
-    // Retrieve parameters using the private namespace
-    nh.param<std::string>("drone_id1", drone_id1, "falcon");
-    nh.param<std::string>("drone_id2", drone_id2, "falcon1");
-    nh.param<double>("Mid_x", Mid_x, 2.0);
-    nh.param<double>("Mid_y", Mid_y, 1.0);
-    nh.param<double>("Mid_z", Mid_z, 1.0);
-    nh.param<double>("kp", kp, 1.0);
-    nh.param<double>("ki", ki, 0.01);
-    nh.param<double>("kd", kd, 0.05);
-    nh.param<double>("Mid_yaw", Mid_yaw, 0.0); // Modified line
-    double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
-    target_x = Mid_x + radius * cos(Mid_yaw_radians);
-    target_y = Mid_y + radius * sin(Mid_yaw_radians);
-    target_z = Mid_z;
-    target_x1 = Mid_x + radius * cos(Mid_yaw_radians + M_PI);
-    target_y1 = Mid_y + radius * sin(Mid_yaw_radians + M_PI);
-    target_z1 = Mid_z;
-    target_yaw = Mid_yaw_radians; 
-    target_yaw1 = Mid_yaw_radians;
-    // Logging
-    ROS_INFO("Drone ID 1: %s", drone_id1.c_str());
-    ROS_INFO("Drone ID 2: %s", drone_id2.c_str());
-    ROS_INFO("Target position: (%f, %f, %f)", target_x, target_y, target_z);
-    ROS_INFO("Target1 position: (%f, %f, %f)", target_x1, target_y1, target_z1);
-    ROS_INFO("Target yaw: %f, Target yaw1: %f", target_yaw, target_yaw1);
-    ROS_INFO("PID Coefficients: Kp=%f, Ki=%f, Kd=%f", kp, ki, kd);
-
-    // Topics
-    std::ostringstream velocity_topic1, velocity_topic2, odometry_topic1, odometry_topic2;
-    velocity_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/velocity_command";
-    odometry_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/odometry";
-    velocity_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/velocity_command";
-    odometry_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/odometry";
-
-    // PID Controllers
-    PIDController pid1(kp, ki, kd), pid2(kp, ki, kd);
-
-    // Publishers
-    ros::Publisher vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic1.str(), 10);
-    ros::Publisher vel_pub2 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic2.str(), 10);
-    ROS_INFO("Publishing to %s and %s", velocity_topic1.str().c_str(), velocity_topic2.str().c_str());
-
-    // Rate
-    double loop_rate_hz = 50.0;
-    ros::Rate loop_rate(loop_rate_hz);
-
-    // Target positions
+class DroneController {
+private:
+    ros::NodeHandle nh;
+    ros::Publisher vel_pub1;
+    ros::Publisher vel_pub2;
+    ros::Subscriber odom_sub1;
+    ros::Subscriber odom_sub2;
+    PIDController pid1;
+    PIDController pid2;
     geometry_msgs::Point target_position;
-    target_position.x = target_x;
-    target_position.y = target_y;
-    target_position.z = target_z;
-
     geometry_msgs::Point target_position1;
-    target_position1.x = target_x1;
-    target_position1.y = target_y1;
-    target_position1.z = target_z1;
+    std::string drone_id1;
+    std::string drone_id2;
+    std::ostringstream velocity_topic1, velocity_topic2;  
+    std::ostringstream odometry_topic1, odometry_topic2; 
+    double target_yaw;
+    double target_yaw1;
+    double Mid_x, Mid_y, Mid_z;
+    double Mid_yaw;
+    double Mid_yaw_increment;
+    double Mid_yaw_end_normalized_degrees;
+    double Mid_yaw_end;
+    double radius = 1.0;
+    ros::Timer update_timer, shutdown_timer;
 
-    // Callbacks for each drone
-    auto odometryCallback1 = [&vel_pub1, &pid1, &target_position, target_yaw, loop_rate_hz](const nav_msgs::Odometry::ConstPtr& msg) {
-        geometry_msgs::TwistStamped velocity_command;
-        velocity_command.header.stamp = ros::Time::now();
-        velocity_command.twist = pid1.computeControl(target_position, msg->pose.pose.position, 1.0 / loop_rate_hz);
-        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-        velocity_command.twist.angular.z = pid1.computeYawControl(target_yaw, current_yaw, 1.0 / loop_rate_hz);
-        vel_pub1.publish(velocity_command);
-    };
+public:
+    DroneController() : nh("~"), pid1(1.0, 0.01, 0.05), pid2(1.0, 0.01, 0.05) {
+        nh.param<std::string>("drone_id1", drone_id1, "falcon");
+        nh.param<std::string>("drone_id2", drone_id2, "falcon1");
+        nh.param<double>("Mid_x", Mid_x, 2.0);
+        nh.param<double>("Mid_y", Mid_y, 1.0);
+        nh.param<double>("Mid_z", Mid_z, 1.0);
+        nh.param<double>("Mid_yaw_end", Mid_yaw_end, 360.0); 
+        Mid_yaw_end_normalized_degrees = normalizeAngle(Mid_yaw_end * M_PI / 180.0) *180 /M_PI;
+        nh.param<double>("Mid_yaw_increment", Mid_yaw_increment, 15.0); 
+        setupTimer();
+        setupCommunication();
+        fetchInitialYaw();
+    }
+    double normalizeAngle(double angle) {
+        while (angle > M_PI) angle -= 2.0 * M_PI;
+        while (angle < -M_PI) angle += 2.0 * M_PI;
+        return angle;
+    }
+    void fetchInitialYaw() {
+        bool initialYawFound = false;
+        while (!initialYawFound) {
+            auto msg = ros::topic::waitForMessage<nav_msgs::Odometry>(odometry_topic1.str(), nh, ros::Duration(5));
+            if (msg) {
+                double initial_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, 
+                                                        msg->pose.pose.orientation.y,
+                                                        msg->pose.pose.orientation.z,
+                                                        msg->pose.pose.orientation.w);
+                double initial_yaw_degrees = normalizeAngle(initial_yaw) * 180.0 / M_PI;
+                ROS_INFO("Initial Yaw: %f degrees", initial_yaw_degrees);
+                Mid_yaw = initial_yaw_degrees;
+                initialYawFound = true;
+            } else {
+                ROS_WARN("No odometry message received. Retrying in 1 second...");
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
+    }
+    
 
-    auto odometryCallback2 = [&vel_pub2, &pid2, &target_position1, target_yaw1, loop_rate_hz](const nav_msgs::Odometry::ConstPtr& msg) {
-        geometry_msgs::TwistStamped velocity_command;
-        velocity_command.header.stamp = ros::Time::now();
-        velocity_command.twist = pid2.computeControl(target_position1, msg->pose.pose.position, 1.0 / loop_rate_hz);
-        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-        velocity_command.twist.angular.z = pid2.computeYawControl(target_yaw1, current_yaw, 1.0 / loop_rate_hz);
-        vel_pub2.publish(velocity_command);
-    };
+    void setupCommunication() {
+        velocity_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/velocity_command";
+        odometry_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/odometry";
+        velocity_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/velocity_command";
+        odometry_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/odometry";
 
-    // Subscribers for each drone
-    ros::Subscriber odom_sub1 = nh.subscribe<nav_msgs::Odometry>(odometry_topic1.str(), 10, odometryCallback1);
-    ros::Subscriber odom_sub2 = nh.subscribe<nav_msgs::Odometry>(odometry_topic2.str(), 10, odometryCallback2);
+        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic1.str(), 10);
+        vel_pub2 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic2.str(), 10);
 
-    while (ros::ok()) {
-        ros::spinOnce();
-        loop_rate.sleep();
+        odom_sub1 = nh.subscribe<nav_msgs::Odometry>(odometry_topic1.str(), 10, &DroneController::odometryCallback1, this);
+        odom_sub2 = nh.subscribe<nav_msgs::Odometry>(odometry_topic2.str(), 10, &DroneController::odometryCallback2, this);
     }
 
+
+    void setupTimer() {
+        update_timer = nh.createTimer(ros::Duration(0.3), &DroneController::updateCallback, this);
+    }
+
+    void updateCallback(const ros::TimerEvent&) {
+        if (Mid_yaw < Mid_yaw_end_normalized_degrees) {
+            Mid_yaw += Mid_yaw_increment;
+            double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
+            updatePositions(Mid_yaw_radians);
+            ROS_INFO("New yaw: %f", Mid_yaw);
+            ROS_INFO("New target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw);
+        } else {
+            updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
+            ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
+            ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
+            ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
+            shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
+            update_timer.stop();
+        }
+    }
+    void shutdownCallback(const ros::TimerEvent&) {
+        ROS_INFO("Shutdown after holding position.");
+        ros::shutdown();
+    }
+    void updatePositions(double yaw_radians) {
+        target_position.x = Mid_x + radius * cos(yaw_radians);
+        target_position.y = Mid_y + radius * sin(yaw_radians);
+        target_position.z = Mid_z;
+        target_position1.x = Mid_x + radius * cos(yaw_radians + M_PI);
+        target_position1.y = Mid_y + radius * sin(yaw_radians + M_PI);
+        target_position1.z = Mid_z;
+        target_yaw = yaw_radians;
+        target_yaw1 = yaw_radians;
+    }
+
+    void odometryCallback1(const nav_msgs::Odometry::ConstPtr& msg) {
+        geometry_msgs::TwistStamped velocity_command;
+        velocity_command.header.stamp = ros::Time::now();
+        velocity_command.twist = pid1.computeControl(target_position, msg->pose.pose.position, 1.0 / 50.0);
+        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+        velocity_command.twist.angular.z = pid1.computeYawControl(target_yaw, current_yaw, 1.0 / 50.0);
+        vel_pub1.publish(velocity_command);
+    }
+
+    void odometryCallback2(const nav_msgs::Odometry::ConstPtr& msg) {
+        geometry_msgs::TwistStamped velocity_command;
+        velocity_command.header.stamp = ros::Time::now();
+        velocity_command.twist = pid2.computeControl(target_position1, msg->pose.pose.position, 1.0 / 50.0);
+        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+        velocity_command.twist.angular.z = pid2.computeYawControl(target_yaw1, current_yaw, 1.0 / 50.0);
+        vel_pub2.publish(velocity_command);
+    }
+};
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "velocity_turn_and_move_node");
+    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wacht 4 seconden voor takeoff
+    DroneController controller;
+    ros::spin();
     return 0;
 }
+
