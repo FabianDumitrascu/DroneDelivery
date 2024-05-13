@@ -1,9 +1,10 @@
 ---
 name: Standard Scrum Template
-about: Use this template to create new issues
-title: ""
-labels: ""
-assignees: ""
+about: Use this template to create daily scrum meetings
+title: ''
+labels: ''
+assignees: FabianDumitrascu
+
 ---
 
 ## Scrum Meeting Outline:
@@ -11,37 +12,26 @@ assignees: ""
 ### 1. Project Overview:
 
 - **Scrum Master:** [Scrum Master's Name]
-- **Product Owner:** [Product Owner's Name]
-- **Development Team:** [List of Team Members]
 
-### 2. Past Week - Sprint Review:
+### 2. Today- Sprint Planning:
 
-#### Issues from Previous Weeks:
+- Issue 1 - Description of Issue
+  - **Assignee:** 
+    - [ ] Bob
+    - [ ] Fabian
+    - [ ] Thijmen
+    - [ ] Ruben
+  - **Comments:** [Description of Problems Faced]
 
+### 3. Today - Sprint Review:
+
+#### Issues for Today:
 - Issue 1 - Description of Issue
   - **assignee(s):**
   - **Status:** 
     - [ ] Done
     - [ ] Failed
   - **Problems Faced:** [Description of Problems Faced]
-  
-- Issue 2 - Description of Issue
-  - **assignee(s):**
-  - **Status:** 
-    - [ ] Done
-    - [ ] Failed
-  - **Problems Faced:** [Description of Problems Faced]
-    
-- Issue 3 - Description of Issue
-  - **assignee(s):**
-  - **Status:** 
-    - [ ] Done
-    - [ ] Failed
-  - **Problems Faced:** [Description of Problems Faced]
-
-#### Demo and Feedback:
-
-- [Feedback Received from supervisors]
 
 #### Sprint Retrospective:
 
@@ -49,44 +39,8 @@ assignees: ""
 - **What Could Be Improved:** [Areas for Improvement]
 - **Action Items:** [List of Action Items for the Next Sprint]
 
-### 3. Upcoming Week - Sprint Planning:
-
-#### Sprint Goal:
-
-- [General goals for the upcoming week]
-  
-#### Issues for this week:
-
-- Issue 4 - Description of Issue
-  - **Assignee:** 
-    - [ ] Bob
-    - [ ] Fabian
-    - [ ] Thijmen
-    - [ ] Ruben
-  - **Comments:** [Description of Problems Faced]
-    
-- Issue 5 - Description of Issue
-  - **Assignee:** 
-    - [ ] Bob
-    - [ ] Fabian
-    - [ ] Thijmen
-    - [ ] Ruben
-  - **Comments:** [Description of Problems Faced]
-    
-- Issue 6 - Description of Issue
-  - **Assignee:** 
-    - [ ] Bob
-    - [ ] Fabian
-    - [ ] Thijmen
-    - [ ] Ruben
-  - **Comments:** [Description of Problems Faced]
-
-#### Sprint Backlog:
-
-- [List of Tasks Associated with Each Issue]
-
 #### Turfen:
 Bob:
-Fabian: |
+Fabian: 
 Ruben:
 Thijmen:
