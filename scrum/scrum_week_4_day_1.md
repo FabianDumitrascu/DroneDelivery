@@ -7,14 +7,14 @@
 - **Atbsence**: Bob: Friday, Ruben: Wednesday, Thijmen: Wednesday, Fabian: TBA
 ### 2. Today- Sprint Planning:
 
-- Issue [] - create gazebo plug in for bar
+- Issue [[#51](https://github.com/FabianDumitrascu/DroneDelivery/issues/51)] - create gazebo plug in for bar
   - **Assignee:** 
     - [ ] Bob
     - [x] Fabian
     - [ ] Thijmen
     - [ ] Ruben
 
-- Issue [] -Turn and move velocity controller
+- Issue [[#50](https://github.com/FabianDumitrascu/DroneDelivery/issues/50)] -Turn and move velocity controller
   - **Assignee:** 
     - [ ] Bob
     - [ ] Fabian
@@ -31,32 +31,31 @@
 ### 3. Today - Sprint Review:
 
 #### Issues for Today:
-- Closes 
+- Issue [[#51](https://github.com/FabianDumitrascu/DroneDelivery/issues/51)] - create gazebo plug in for bar
   - **assignee(s):** Fabian
   - **Status:** 
-    - [x] Done
-    - [ ] Failed
+    - [ ] Done
+    - [x] Failed/Still working on it
 
-- Closes 
+- Issue [[#50](https://github.com/FabianDumitrascu/DroneDelivery/issues/50)] -Turn and move velocity controller
   - **assignee(s):** Thijmen
   - **Status:** 
     - [x] Done
-    - [ ] Failed
+    - [ ] Failed/Still working on it
 
 - Issue [#39](https://github.com/FabianDumitrascu/DroneDelivery/issues/39) - Attaching ropes to drone/bar
   - **assignee(s):** Ruben
   - **Status:** 
     - [ ] Done
-    - [x] Failed
+    - [x] Failed/Still working on it
 
 #### Sprint Retrospective:
 
-- **What Went Well:** Thijmen is a legend, he is the best person on earth he fixes the whole project by himself.
-- **What Could Be Improved:** Have physical meetings
-- **Action Items:** Make Issue for drones not colliding against eachother.
+- **What Went Well:** First time that we saw a bar and ropes in Gazebo. Velocity controller is as good as done.
+- **What Could Be Improved:** Fabian had the feeling that he didn't know what to do exactly. Programming together doesn't work nice. 
+- **Action Items:** Make a Node and find out how to use it in the PID controller.
 
-Closes [#48](https://github.com/FabianDumitrascu/DroneDelivery/issues/48)
-Closes [#45](https://github.com/FabianDumitrascu/DroneDelivery/issues/45)
+Closes [#50](https://github.com/FabianDumitrascu/DroneDelivery/issues/50)
 
 #### Turfen:
 Bob:|
