@@ -7,7 +7,7 @@ project(node_topic_devel)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs genmsg)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy std_msgs message_generation)
 
 include_directories(${catkin_INCLUDE_DIRS})
 
@@ -44,12 +44,11 @@ include_directories(${catkin_INCLUDE_DIRS})
 ##   * uncomment the generate_messages entry below
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
-## Generate messages in the 'msg' folder
-# add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
-# )
+# Generate messages in the 'msg' folder
+add_message_files(
+  FILES
+  person_data.msg
+)
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -132,6 +131,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(publisher_node src/publisher_node.cpp)
+add_executable(subscriber_node src/subscriber_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -142,9 +142,14 @@ add_executable(publisher_node src/publisher_node.cpp)
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(publisher_node ${publisher_node_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(subscriber_node ${subscriber_node_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(publisher_node
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(subscriber_node
   ${catkin_LIBRARIES}
 )
 
