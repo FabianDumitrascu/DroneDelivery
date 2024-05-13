@@ -7,10 +7,10 @@
     <arg name="Mid_x" default="1.0"/>
     <arg name="Mid_y" default="1.0"/>
     <arg name="Mid_z" default="2.0"/>
-    <arg name="Mid_yaw" default="0.0"/>
-    <arg name="kp" default="1.0"/>
+    <arg name="Mid_yaw_end" default="0.0"/>
+    <arg name="kp" default="0.6"/>
     <arg name="ki" default="0.01"/>
-    <arg name="kd" default="0.05"/>
+    <arg name="kd" default="0.03"/>
 
 
     <!-- Node for Command-->
@@ -27,7 +27,7 @@
             <param name="Mid_x" value="$(arg Mid_x)"/>
             <param name="Mid_y" value="$(arg Mid_y)"/>
             <param name="Mid_z" value="$(arg Mid_z)"/>
-            <param name="Mid_yaw" value="$(arg Mid_yaw)"/>
+            <param name="Mid_yaw_end" value="$(arg Mid_yaw_end)"/>
             <param name="kp" value="$(arg kp)"/>
             <param name="ki" value="$(arg ki)"/>
             <param name="kd" value="$(arg kd)"/>
