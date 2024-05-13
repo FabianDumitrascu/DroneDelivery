@@ -1,0 +1,24 @@
+<launch>
+    <!-- Default arguments -->
+    <arg name="drone_id1" default="falcon"/>
+    <arg name="drone_id2" default="$(arg drone_id1)1"/>
+    <arg name="end_angle_degrees" default="90"/>
+    <arg name="target_x" default="2.0"/>
+    <arg name="target_y" default="2.0"/>
+    <!-- Node for Command-->
+    <!-- Include the takeoff launch file -->
+    <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
+    <!-- After takeoff, initiate the position control -->
+    <group ns="BEP">
+        <node name="Position_turn_and_move_node"
+              pkg="drone_controller"
+              type="Position_turn_and_move_node"
+              output="screen">
+            <param name="drone_id1" value="$(arg drone_id1)"/>
+            <param name="drone_id2" value="$(arg drone_id2)"/>
+            <param name="end_angle_degrees" value="$(arg end_angle_degrees)"/>
+            <param name="target_x" value="$(arg target_x)"/>
+            <param name="target_y" value="$(arg target_y)"/>
+        </node>
+    </group>
+</launch>

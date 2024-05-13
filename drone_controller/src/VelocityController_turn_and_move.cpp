@@ -5,6 +5,7 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
+
 class PIDController {
 private:
     double Kp, Ki, Kd;
@@ -35,35 +36,60 @@ public:
         twist.linear.z = Kp * error_z + Ki * integral_z + Kd * derivative_z;
         return twist;
     }
+
+    double computeYawControl(double target_yaw, double current_yaw, double dt) {
+        double error_yaw = normalizeAngle(target_yaw - current_yaw);
+        double yaw_rate = Kp * error_yaw; // Simplified for demonstration
+        return yaw_rate;
+    }
+
+    double normalizeAngle(double angle) {
+        while (angle > M_PI) angle -= 2.0 * M_PI;
+        while (angle < -M_PI) angle += 2.0 * M_PI;
+        return angle;
+    }
 };
 
-int main(int argc, char** argv) {
-    ros::init(argc, argv, "command_node");
-    ros::NodeHandle nh;  // No namespace is used here
-    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wacht 1 seconden voor takeoff
-    // Parameters for target position and PID coefficients
-    std::string drone_id1, drone_id2;
-    double target_x, target_y, target_z, kp, ki, kd;
-    double target_x1, target_y1, target_z1;
+double getYawFromQuaternion(double x, double y, double z, double w) {
+    return atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z));
+}
 
-    // Corrected parameter retrieval paths
-    nh.getParam("/BEP/command_node_2_pos/drone_id1", drone_id1);
-    nh.getParam("/BEP/command_node_2_pos/drone_id2", drone_id2);
-    nh.getParam("/BEP/command_node_2_pos/target_x", target_x);
-    nh.getParam("/BEP/command_node_2_pos/target_y", target_y);
-    nh.getParam("/BEP/command_node_2_pos/target_z", target_z);
-    nh.getParam("/BEP/command_node_2_pos/target_x1", target_x1);
-    nh.getParam("/BEP/command_node_2_pos/target_y1", target_y1);
-    nh.getParam("/BEP/command_node_2_pos/target_z1", target_z1);
-    nh.getParam("/BEP/command_node_2_pos/kp", kp);
-    nh.getParam("/BEP/command_node_2_pos/ki", ki);
-    nh.getParam("/BEP/command_node_2_pos/kd", kd);
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "velocity_turn_and_move_node");
+    ros::NodeHandle nh("~");  // Private namespace NodeHandle
+    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait 4 seconds before takeoff
+
+    // Parameters for target positions, PID coefficients, and yaw angles
+    std::string drone_id1, drone_id2;
+    double target_x, target_y, target_z, kp, ki, kd, target_x1, target_y1, target_z1, Mid_x, Mid_y, Mid_z, Mid_yaw;
+    double target_yaw, target_yaw1;
+    double radius = 1.0;
     
+    // Retrieve parameters using the private namespace
+    nh.param<std::string>("drone_id1", drone_id1, "falcon");
+    nh.param<std::string>("drone_id2", drone_id2, "falcon1");
+    nh.param<double>("Mid_x", Mid_x, 2.0);
+    nh.param<double>("Mid_y", Mid_y, 1.0);
+    nh.param<double>("Mid_z", Mid_z, 1.0);
+    nh.param<double>("kp", kp, 1.0);
+    nh.param<double>("ki", ki, 0.01);
+    nh.param<double>("kd", kd, 0.05);
+    nh.param<double>("Mid_yaw", Mid_yaw, 0.0); // Modified line
+    double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
+    target_x = Mid_x + radius * cos(Mid_yaw_radians);
+    target_y = Mid_y + radius * sin(Mid_yaw_radians);
+    target_z = Mid_z;
+    target_x1 = Mid_x + radius * cos(Mid_yaw_radians + M_PI);
+    target_y1 = Mid_y + radius * sin(Mid_yaw_radians + M_PI);
+    target_z1 = Mid_z;
+    target_yaw = Mid_yaw_radians; 
+    target_yaw1 = Mid_yaw_radians;
     // Logging
     ROS_INFO("Drone ID 1: %s", drone_id1.c_str());
     ROS_INFO("Drone ID 2: %s", drone_id2.c_str());
     ROS_INFO("Target position: (%f, %f, %f)", target_x, target_y, target_z);
-    ROS_INFO("Target2 position: (%f, %f, %f)", target_x1, target_y1, target_z1);
+    ROS_INFO("Target1 position: (%f, %f, %f)", target_x1, target_y1, target_z1);
+    ROS_INFO("Target yaw: %f, Target yaw1: %f", target_yaw, target_yaw1);
     ROS_INFO("PID Coefficients: Kp=%f, Ki=%f, Kd=%f", kp, ki, kd);
 
     // Topics
@@ -85,30 +111,33 @@ int main(int argc, char** argv) {
     double loop_rate_hz = 50.0;
     ros::Rate loop_rate(loop_rate_hz);
 
-    // Target position
+    // Target positions
     geometry_msgs::Point target_position;
     target_position.x = target_x;
     target_position.y = target_y;
     target_position.z = target_z;
 
-    // Target position
     geometry_msgs::Point target_position1;
     target_position1.x = target_x1;
     target_position1.y = target_y1;
     target_position1.z = target_z1;
 
     // Callbacks for each drone
-    auto odometryCallback1 = [&vel_pub1, &pid1, &target_position, loop_rate_hz](const nav_msgs::Odometry::ConstPtr& msg) {
+    auto odometryCallback1 = [&vel_pub1, &pid1, &target_position, target_yaw, loop_rate_hz](const nav_msgs::Odometry::ConstPtr& msg) {
         geometry_msgs::TwistStamped velocity_command;
         velocity_command.header.stamp = ros::Time::now();
         velocity_command.twist = pid1.computeControl(target_position, msg->pose.pose.position, 1.0 / loop_rate_hz);
+        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+        velocity_command.twist.angular.z = pid1.computeYawControl(target_yaw, current_yaw, 1.0 / loop_rate_hz);
         vel_pub1.publish(velocity_command);
     };
 
-    auto odometryCallback2 = [&vel_pub2, &pid2, &target_position1, loop_rate_hz](const nav_msgs::Odometry::ConstPtr& msg) {
+    auto odometryCallback2 = [&vel_pub2, &pid2, &target_position1, target_yaw1, loop_rate_hz](const nav_msgs::Odometry::ConstPtr& msg) {
         geometry_msgs::TwistStamped velocity_command;
         velocity_command.header.stamp = ros::Time::now();
         velocity_command.twist = pid2.computeControl(target_position1, msg->pose.pose.position, 1.0 / loop_rate_hz);
+        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+        velocity_command.twist.angular.z = pid2.computeYawControl(target_yaw1, current_yaw, 1.0 / loop_rate_hz);
         vel_pub2.publish(velocity_command);
     };
 

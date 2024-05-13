@@ -36,6 +36,6 @@ int main(int argc, char** argv) {
 
     // Sleep to ensure the messages have time to be sent
     ros::Duration(1).sleep(); 
-
+    ROS_INFO("TAKEOFF SUCCEEDED");
     return 0;
 }
