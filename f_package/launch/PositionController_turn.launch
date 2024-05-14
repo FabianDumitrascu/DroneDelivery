@@ -1,0 +1,19 @@
+<launch>
+    <!-- Default arguments -->
+    <arg name="drone_id1" default="falcon"/>
+    <arg name="drone_id2" default="$(arg drone_id1)1"/>
+    <arg name="end_angle_degrees" default="90"/>
+
+    <!-- Node for Command-->
+    <!-- After takeoff, initiate the position control -->
+    <group ns="BEP">
+        <node name="Turn_node_simple"
+              pkg="f_package"
+              type="Turn_node_simple"
+              output="screen">
+            <param name="drone_id1" value="$(arg drone_id1)"/>
+            <param name="drone_id2" value="$(arg drone_id2)"/>
+            <param name="end_angle_degrees" value="$(arg end_angle_degrees)"/>
+        </node>
+    </group>
+</launch>
