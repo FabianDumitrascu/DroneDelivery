@@ -3,6 +3,7 @@
     <arg name="drone_id1" default="falcon"/>
     <arg name="drone_id2" default="$(arg drone_id1)1"/>
     <arg name="end_angle_degrees" default="90"/>
+    <arg name="radius" default="1.0"/>
 
     <!-- Node for Command-->
     <!-- After takeoff, initiate the position control -->
@@ -14,6 +15,7 @@
             <param name="drone_id1" value="$(arg drone_id1)"/>
             <param name="drone_id2" value="$(arg drone_id2)"/>
             <param name="end_angle_degrees" value="$(arg end_angle_degrees)"/>
+            <param name="radius" value="$(arg radius)"/>
         </node>
     </group>
 </launch>
