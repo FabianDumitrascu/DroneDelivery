@@ -14,7 +14,7 @@
     - [ ] Thijmen
     - [ ] Ruben
 
-- Issue [] -Presentatie maken
+- Issue [[#58](https://github.com/FabianDumitrascu/DroneDelivery/issues/58)] -Presentatie maken
   - **Assignee:** 
     - [ ] Bob
     - [ ] Fabian
