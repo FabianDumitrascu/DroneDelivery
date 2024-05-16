@@ -89,8 +89,8 @@ private:
 
 public:
     DroneController() : nh("~"), pid1(1.0, 0.01, 0.05, 10.0), pid2(1.0, 0.01, 0.05, 10.0) {
-        nh.param<std::string>("drone_id1", drone_id1, "falcon");
-        nh.param<std::string>("drone_id2", drone_id2, "falcon1");
+        nh.param<std::string>("drone_id1", drone_id1, "flycrane");
+        nh.param<std::string>("drone_id2", drone_id2, "flycrane1");
         nh.param<double>("Mid_x", Mid_x, 2.0);
         nh.param<double>("Mid_y", Mid_y, 1.0);
         nh.param<double>("Mid_z", Mid_z, 1.0);
