@@ -1,0 +1,38 @@
+<launch>
+    <!-- Default arguments -->
+    <arg name="drone_id1" default="falcon"/>
+    <arg name="drone_id2" default="$(arg drone_id1)1"/> 
+    <arg name="drone_name_1" default="falcon"/>
+    <arg name="drone_name_2" default="$(arg drone_name_1)1"/>
+    <arg name="target_x" default="1.0"/>
+    <arg name="target_y" default="1.0"/>
+    <arg name="target_z" default="2.0"/>
+    <arg name="target_yaw_end" default="0.0"/>
+    <arg name="kp" default="0.6"/>
+    <arg name="ki" default="0.01"/>
+    <arg name="kd" default="0.03"/>
+
+
+    <!-- Node for Command-->
+    <!-- Include the takeoff launch file -->
+    <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
+    <!-- After takeoff, initiate the Velocity control -->
+    <group ns="BEP">
+        <node name="Velocity_bar_turn_and_move_node"
+              pkg="drone_controller"
+              type="Velocity_bar_turn_and_move_node"
+              output="screen">
+            <param name="drone_id1" value="$(arg drone_id1)"/>
+            <param name="drone_id2" value="$(arg drone_id2)"/>
+            <param name="target_x" value="$(arg target_x)"/>
+            <param name="target_y" value="$(arg target_y)"/>
+            <param name="target_z" value="$(arg target_z)"/>
+            <param name="target_yaw_end" value="$(arg target_yaw_end)"/>
+            <param name="kp" value="$(arg kp)"/>
+            <param name="ki" value="$(arg ki)"/>
+            <param name="kd" value="$(arg kd)"/>
+        </node>
+    </group>
+</launch>
+
+

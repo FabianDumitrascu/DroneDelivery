@@ -74,13 +74,12 @@ private:
     geometry_msgs::Point target_position1;
     std::string drone_id1;
     std::string drone_id2;
-    std::ostringstream velocity_topic1, velocity_topic2;  
-    std::ostringstream odometry_topic1, odometry_topic2; 
     double target_yaw;
     double target_yaw1;
     double Mid_x, Mid_y, Mid_z;
     double Mid_yaw;
     double Mid_yaw_increment;
+    double initial_yaw;
     double initial_yaw_degrees;
     double Mid_yaw_end_normalized_degrees;
     double Mid_yaw_end;
@@ -108,7 +107,7 @@ public:
     void fetchInitialYaw() {
         bool initialYawFound = false;
         while (!initialYawFound) {
-            auto msg = ros::topic::waitForMessage<nav_msgs::Odometry>(odometry_topic1.str(), nh, ros::Duration(5));
+            auto msg = ros::topic::waitForMessage<nav_msgs::Odometry>("/mass1/agiros_pilot/odometry", nh, ros::Duration(5));
             if (msg) {
                 double initial_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, 
                                                         msg->pose.pose.orientation.y,
@@ -141,16 +140,10 @@ public:
     
 
     void setupCommunication() {
-        velocity_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/velocity_command";
-        odometry_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/odometry";
-        velocity_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/velocity_command";
-        odometry_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/odometry";
-
-        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic1.str(), 10);
-        vel_pub2 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic2.str(), 10);
-
-        odom_sub1 = nh.subscribe<nav_msgs::Odometry>(odometry_topic1.str(), 10, &DroneController::odometryCallback1, this);
-        odom_sub2 = nh.subscribe<nav_msgs::Odometry>(odometry_topic2.str(), 10, &DroneController::odometryCallback2, this);
+        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>("/falcon/agiros_pilot/velocity_command", 10);
+        vel_pub2 = nh.advertise<geometry_msgs::TwistStamped>("/falcon1/agiros_pilot/velocity_command", 10);
+        odom_sub1 = nh.subscribe<nav_msgs::Odometry>("/mass1/agiros_pilot/odometry", 10, &DroneController::odometryCallback1, this);
+        odom_sub2 = nh.subscribe<nav_msgs::Odometry>("/mass2/agiros_pilot/odometry", 10, &DroneController::odometryCallback2, this);
     }
 
 
