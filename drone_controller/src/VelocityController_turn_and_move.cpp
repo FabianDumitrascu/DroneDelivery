@@ -75,6 +75,7 @@ private:
     double Mid_x, Mid_y, Mid_z;
     double Mid_yaw;
     double Mid_yaw_increment;
+    double initial_yaw_degrees;
     double Mid_yaw_end_normalized_degrees;
     double Mid_yaw_end;
     double radius = 1.0;
@@ -89,7 +90,6 @@ public:
         nh.param<double>("Mid_z", Mid_z, 1.0);
         nh.param<double>("Mid_yaw_end", Mid_yaw_end, 360.0); 
         Mid_yaw_end_normalized_degrees = normalizeAngle(Mid_yaw_end * M_PI / 180.0) *180 /M_PI;
-        nh.param<double>("Mid_yaw_increment", Mid_yaw_increment, 15.0); 
         setupTimer();
         setupCommunication();
         fetchInitialYaw();
@@ -109,8 +109,22 @@ public:
                                                         msg->pose.pose.orientation.z,
                                                         msg->pose.pose.orientation.w);
                 double initial_yaw_degrees = normalizeAngle(initial_yaw) * 180.0 / M_PI;
-                ROS_INFO("Initial Yaw: %f degrees", initial_yaw_degrees);
+                
                 Mid_yaw = initial_yaw_degrees;
+                if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees > 180.0) {
+                    Mid_yaw_increment = -30.0;  //bvb van -90 naar 180 graden
+                    Mid_yaw_end_normalized_degrees += -360.0;
+                } else if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees <= 180.0) {
+                    Mid_yaw_increment = 30.0;    // bvb can 0 naar 90 graden
+                } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees > 180.0) {
+                    Mid_yaw_increment = 30.0;    // bvb van 180 naar -90 graden
+                    Mid_yaw_end_normalized_degrees += 360.0;
+                } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees <= 180.0) {
+                    Mid_yaw_increment = -30.0;   // bvb van 90 naar 0 graden
+                }
+                ROS_INFO("Initial Yaw: %f degrees", initial_yaw_degrees);
+                ROS_INFO("End Yaw: %f degrees", Mid_yaw_end_normalized_degrees);
+                ROS_INFO("Mid_yaw_increment: %f", Mid_yaw_increment);
                 initialYawFound = true;
             } else {
                 ROS_WARN("No odometry message received. Retrying in 1 second...");
@@ -139,19 +153,40 @@ public:
     }
 
     void updateCallback(const ros::TimerEvent&) {
-        if (Mid_yaw < Mid_yaw_end_normalized_degrees) {
-            Mid_yaw += Mid_yaw_increment;
-            double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
-            updatePositions(Mid_yaw_radians);
-            ROS_INFO("New yaw: %f", Mid_yaw);
-            ROS_INFO("New target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw);
-        } else {
-            updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
-            ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
-            ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
-            ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
-            shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
-            update_timer.stop();
+        
+        if (initial_yaw_degrees < Mid_yaw_end_normalized_degrees) {
+            if (Mid_yaw >= Mid_yaw_end_normalized_degrees) {
+                Mid_yaw = Mid_yaw_end_normalized_degrees;
+                updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
+                ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
+                ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
+                ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
+                shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
+                update_timer.stop();
+            }
+            else {
+                Mid_yaw += Mid_yaw_increment;
+                ROS_INFO("Current yaw: %f", Mid_yaw);
+                double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
+                updatePositions(Mid_yaw_radians);
+            }
+        } 
+        else {
+            if (Mid_yaw <= Mid_yaw_end_normalized_degrees) {
+                Mid_yaw = Mid_yaw_end_normalized_degrees;
+                updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
+                ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
+                ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
+                ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
+                shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
+                update_timer.stop();
+            }
+            else {
+                Mid_yaw += Mid_yaw_increment;
+                ROS_INFO("Current yaw: %f", Mid_yaw);
+                double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
+                updatePositions(Mid_yaw_radians);
+            }
         }
     }
     void shutdownCallback(const ros::TimerEvent&) {
