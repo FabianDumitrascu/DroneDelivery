@@ -14,7 +14,7 @@
 
 class CirclePathController {
 public:
-    CirclePathController() : initial_positions_set(false), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0),
+    CirclePathController() : initial_positions_set(false), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0), startZ(1.0),
                              target_x(2.0), target_y(2.0), target_z(1.0), degree_increment(30.0) {
         nh = ros::NodeHandle("~");
 
@@ -27,8 +27,9 @@ public:
         nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
         nh.getParam("/BEP/Position_turn_and_move_node/target_z", target_z);
 
-        odom_sub_falcon = nh.subscribe("/falcon/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon, this);
-        odom_sub_falcon1 = nh.subscribe("/falcon1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
+        //odom_sub_bar = nh.subscribe("/bar/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackBar, this);
+        //odom_sub_falcon = nh.subscribe("/falcon/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon, this);
+        //odom_sub_falcon1 = nh.subscribe("/falcon1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
 
         pose_pub_falcon = nh.advertise<geometry_msgs::PoseStamped>("/falcon/agiros_pilot/go_to_pose", 2);
         pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/falcon1/agiros_pilot/go_to_pose", 2);
@@ -45,12 +46,12 @@ private:
     ros::Timer timer, initial_position_timer, shutdown_timer;
     bool initial_positions_set;
     double centerX, centerY, centerZ;
-    double startX, startY;
+    double startX, startY, startZ;
     double target_x, target_y, target_z;
     double angle_degrees, start_angle_degrees;
     double end_angle_degrees;
-    double degree_increment, increment_x, increment_y;
-    geometry_msgs::Point initial_position_falcon, initial_position_falcon1;
+    double degree_increment, increment_x, increment_y, increment_z;
+    geometry_msgs::Point initial_position_bar;
 
     void normalizeEndAngleDegrees() {
         if (end_angle_degrees > 180.0) {
@@ -60,30 +61,36 @@ private:
         }
     }
 
-    void odometryCallbackFalcon(const nav_msgs::Odometry::ConstPtr& msg) {
-        if (initial_positions_set==false) {
-            initial_position_falcon = msg->pose.pose.position;
-            checkInitialPositionsSet();
-        }
-    }
+    //void odometryCallbackFalcon(const nav_msgs::Odometry::ConstPtr& msg) {
+      //  if (initial_positions_set==false) {
+        //    initial_position_falcon = msg->pose.pose.position;
+          //  checkInitialPositionsSet();
+        //}
+    //}
 
-    void odometryCallbackFalcon1(const nav_msgs::Odometry::ConstPtr& msg) {
+    //void odometryCallbackFalcon1(const nav_msgs::Odometry::ConstPtr& msg) {
+      //  if (initial_positions_set==false) {
+       //     initial_position_falcon1 = msg->pose.pose.position;
+         //   checkInitialPositionsSet();
+        //}
+    //}
+    void odometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
         if (initial_positions_set==false) {
-            initial_position_falcon1 = msg->pose.pose.position;
+            initial_position_bar = msg->pose.pose.position;
             checkInitialPositionsSet();
         }
     }
 
     void checkInitialPositionsSet() {
-        if (initial_position_falcon.x != 0.0000000 && initial_position_falcon1.x != 0.0000000) {
-            startX = (initial_position_falcon.x + initial_position_falcon1.x) / 2;
-            startY = (initial_position_falcon.y + initial_position_falcon1.y) / 2;
-            double dx = initial_position_falcon.x - startX;
-            double dy = initial_position_falcon.y - startY;
+        if (initial_position_bar.x != 0.0000000) {
+            startX = initial_position_bar.x;
+            startY = initial_position_bar.y;
+            startZ = initial_position_bar.z;
+            start_angle_degrees = initial_position_bar.z;
             centerX = startX;
             centerY = startY;
             normalizeEndAngleDegrees();
-            start_angle_degrees = atan2(dy, dx) * 180.0 / M_PI; // Deze is sowieso tussen -180 en 180 
+            
             angle_degrees = start_angle_degrees;
             if (end_angle_degrees > start_angle_degrees and end_angle_degrees - start_angle_degrees > 180.0) {
                 degree_increment = -30.0;  //bvb van -90 naar 180 graden
@@ -97,9 +104,11 @@ private:
             if (end_angle_degrees-start_angle_degrees == 0.0) {
                 increment_x = target_x - startX;
                 increment_y = target_y - startY;
+                increment_z = target_z - startZ;
             } else {
                 increment_x = (target_x - startX) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
                 increment_y = (target_y - startY) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
+                increment_z = (target_z - startZ) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
             }
 
             initial_positions_set = true;
@@ -152,11 +161,10 @@ private:
         double radius = 1.0;
         double angle_rad = degreesToRadians(angle_degrees);
 
-        
-
         // Update `centerX` and `centerY`
         centerX += increment_x;
         centerY += increment_y;
+        centerZ += increment_z;
         if (startX <= target_x and centerX >= target_x) {
             centerX = target_x;
         } 
@@ -169,16 +177,19 @@ private:
         if (startY >= target_y and centerY <= target_y) {
             centerY = target_y;
         }
-        
+        if (startZ <= target_z and centerZ >= target_z) {
+            centerZ = target_z;
+        }
+        if (startZ >= target_z and centerZ <= target_z) {
         centerZ = target_z;
-
+        }
         geometry_msgs::PoseStamped new_pose_falcon, new_pose_falcon1;
         new_pose_falcon.pose.position.x = centerX + radius * cos(angle_rad);
         new_pose_falcon.pose.position.y = centerY + radius * sin(angle_rad);
-        new_pose_falcon.pose.position.z = centerZ+1.0;
+        new_pose_falcon.pose.position.z = centerZ;
         new_pose_falcon1.pose.position.x = centerX + radius * cos(angle_rad + M_PI);
         new_pose_falcon1.pose.position.y = centerY + radius * sin(angle_rad + M_PI);
-        new_pose_falcon1.pose.position.z = centerZ+1.0;
+        new_pose_falcon1.pose.position.z = centerZ;
         
         // Orientation
         double half_angle_rad = angle_rad / 2;

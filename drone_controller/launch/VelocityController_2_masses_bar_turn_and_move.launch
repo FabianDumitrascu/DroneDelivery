@@ -1,8 +1,8 @@
 <launch>
     <!-- Default arguments -->
-    <arg name="drone_id1" default="flycrane"/>
+    <arg name="drone_id1" default="falcon"/>
     <arg name="drone_id2" default="$(arg drone_id1)1"/> 
-    <arg name="drone_name_1" default="flycrane"/>
+    <arg name="drone_name_1" default="falcon"/>
     <arg name="drone_name_2" default="$(arg drone_name_1)1"/>
     <arg name="Mid_x" default="1.0"/>
     <arg name="Mid_y" default="1.0"/>
@@ -18,9 +18,9 @@
     <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
     <!-- After takeoff, initiate the Velocity control -->
     <group ns="BEP">
-        <node name="Velocity_turn_and_move_node"
+        <node name="Velocity_bar_turn_and_move_node"
               pkg="drone_controller"
-              type="Velocity_turn_and_move_node"
+              type="Velocity_bar_turn_and_move_node"
               output="screen">
             <param name="drone_id1" value="$(arg drone_id1)"/>
             <param name="drone_id2" value="$(arg drone_id2)"/>
