@@ -8,16 +8,16 @@
 #include <chrono>
 
 // Globale variabelen om de huidige positie op te slaan
-geometry_msgs::Point current_position_falcon, current_position_falcon1;
-bool falcon_hover_initiated = false;
-bool falcon1_hover_initiated = false;
+geometry_msgs::Point current_position_flycrane, current_position_flycrane1;
+bool flycrane_hover_initiated = false;
+bool flycrane1_hover_initiated = false;
 
-void odometryCallbackFalcon(const nav_msgs::Odometry::ConstPtr& msg) {
-    current_position_falcon = msg->pose.pose.position;
+void odometryCallbackflycrane(const nav_msgs::Odometry::ConstPtr& msg) {
+    current_position_flycrane = msg->pose.pose.position;
 }
 
-void odometryCallbackFalcon1(const nav_msgs::Odometry::ConstPtr& msg) {
-    current_position_falcon1 = msg->pose.pose.position;
+void odometryCallbackflycrane1(const nav_msgs::Odometry::ConstPtr& msg) {
+    current_position_flycrane1 = msg->pose.pose.position;
 }
 
 bool isPositionReached(const geometry_msgs::Point& current, const geometry_msgs::Point& target) {
@@ -36,13 +36,13 @@ int main(int argc, char **argv) {
     nh.getParam("/BEP/Position_move_node/drone_id1", drone_id1);
     nh.getParam("/BEP/Position_move_node/drone_id2", drone_id2);
 
-    ros::Publisher pose_pub_falcon = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id1 + "/agiros_pilot/go_to_pose", 10);
-    ros::Publisher pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id2 + "/agiros_pilot/go_to_pose", 10);
-    ros::Publisher hover_pub_falcon = nh.advertise<std_msgs::Empty>("/" + drone_id1 + "/agiros_pilot/force_hover", 10, true);
-    ros::Publisher hover_pub_falcon1 = nh.advertise<std_msgs::Empty>("/" + drone_id2 + "/agiros_pilot/force_hover", 10, true);
+    ros::Publisher pose_pub_flycrane = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id1 + "/agiros_pilot/go_to_pose", 10);
+    ros::Publisher pose_pub_flycrane1 = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id2 + "/agiros_pilot/go_to_pose", 10);
+    ros::Publisher hover_pub_flycrane = nh.advertise<std_msgs::Empty>("/" + drone_id1 + "/agiros_pilot/force_hover", 10, true);
+    ros::Publisher hover_pub_flycrane1 = nh.advertise<std_msgs::Empty>("/" + drone_id2 + "/agiros_pilot/force_hover", 10, true);
 
-    ros::Subscriber odom_sub_falcon = nh.subscribe("/" + drone_id1 + "/agiros_pilot/odometry", 10, odometryCallbackFalcon);
-    ros::Subscriber odom_sub_falcon1 = nh.subscribe("/" + drone_id2 + "/agiros_pilot/odometry", 10, odometryCallbackFalcon1);
+    ros::Subscriber odom_sub_flycrane = nh.subscribe("/" + drone_id1 + "/agiros_pilot/odometry", 10, odometryCallbackflycrane);
+    ros::Subscriber odom_sub_flycrane1 = nh.subscribe("/" + drone_id2 + "/agiros_pilot/odometry", 10, odometryCallbackflycrane1);
 
     ros::Rate loop_rate(10);
 
@@ -55,33 +55,33 @@ int main(int argc, char **argv) {
         nh.getParam("/BEP/Position_move_node/target_y1", target_position1.y);
         nh.getParam("/BEP/Position_move_node/target_z1", target_position1.z);
 
-        geometry_msgs::PoseStamped pose_falcon, pose_falcon1;
-        pose_falcon.header.stamp = ros::Time::now();
-        pose_falcon.header.frame_id = "world";
-        pose_falcon.pose.position = target_position;
-        pose_falcon.pose.orientation.w = sin(0.25*M_PI);
-        pose_falcon.pose.orientation.z = sin(0.25*M_PI);
-        pose_falcon1.header.stamp = ros::Time::now();
-        pose_falcon1.header.frame_id = "world";
-        pose_falcon1.pose.position = target_position1;
-        pose_falcon1.pose.orientation.w = sin(0.25*M_PI);
-        pose_falcon1.pose.orientation.z = sin(0.25*M_PI);
+        geometry_msgs::PoseStamped pose_flycrane, pose_flycrane1;
+        pose_flycrane.header.stamp = ros::Time::now();
+        pose_flycrane.header.frame_id = "world";
+        pose_flycrane.pose.position = target_position;
+        pose_flycrane.pose.orientation.w = sin(0.25*M_PI);
+        pose_flycrane.pose.orientation.z = sin(0.25*M_PI);
+        pose_flycrane1.header.stamp = ros::Time::now();
+        pose_flycrane1.header.frame_id = "world";
+        pose_flycrane1.pose.position = target_position1;
+        pose_flycrane1.pose.orientation.w = sin(0.25*M_PI);
+        pose_flycrane1.pose.orientation.z = sin(0.25*M_PI);
 
-        pose_pub_falcon.publish(pose_falcon);
-        pose_pub_falcon1.publish(pose_falcon1);
+        pose_pub_flycrane.publish(pose_flycrane);
+        pose_pub_flycrane1.publish(pose_flycrane1);
 
-        if (isPositionReached(current_position_falcon, target_position) && !falcon_hover_initiated) {
-            ROS_INFO("Falcon reaching target position, initiating hover.");
-            hover_pub_falcon.publish(std_msgs::Empty());
-            falcon_hover_initiated = true;
+        if (isPositionReached(current_position_flycrane, target_position) && !flycrane_hover_initiated) {
+            ROS_INFO("flycrane reaching target position, initiating hover.");
+            hover_pub_flycrane.publish(std_msgs::Empty());
+            flycrane_hover_initiated = true;
         }
-        if (isPositionReached(current_position_falcon1, target_position1) && !falcon1_hover_initiated) {
-            ROS_INFO("Falcon1 reaching target position, initiating hover.");
-            hover_pub_falcon1.publish(std_msgs::Empty());
-            falcon1_hover_initiated = true;
+        if (isPositionReached(current_position_flycrane1, target_position1) && !flycrane1_hover_initiated) {
+            ROS_INFO("flycrane1 reaching target position, initiating hover.");
+            hover_pub_flycrane1.publish(std_msgs::Empty());
+            flycrane1_hover_initiated = true;
         }
 
-        if (falcon_hover_initiated && falcon1_hover_initiated) {
+        if (flycrane_hover_initiated && flycrane1_hover_initiated) {
             ROS_INFO("Both drones are in hover mode, exiting.");
             break;
         }

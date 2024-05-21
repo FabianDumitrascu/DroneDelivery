@@ -85,8 +85,8 @@ private:
 
 public:
     DroneController() : nh("~"), pid(1.0, 0.01, 0.05, 10.0), pid1(1.0, 0.01, 0.05, 10.0) {
-        nh.param<std::string>("drone_id1", drone_id1, "falcon");
-        nh.param<std::string>("drone_id2", drone_id2, "falcon1");
+        nh.param<std::string>("drone_id1", drone_id1, "flycrane");
+        nh.param<std::string>("drone_id2", drone_id2, "flycrane1");
         nh.param<std::string>("bar_odometry_topic", bar_odometry_topic, "/bar/agiros_pilot/odometry");
         nh.param<double>("target_x", target_x, 2.0);
         nh.param<double>("target_y", target_y, 1.0);
@@ -139,8 +139,8 @@ public:
     }
     
     void setupCommunication() {
-        vel_pub = nh.advertise<geometry_msgs::TwistStamped>("/falcon/agiros_pilot/velocity_command", 10);
-        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>("/falcon1/agiros_pilot/velocity_command", 10);
+        vel_pub = nh.advertise<geometry_msgs::TwistStamped>("/flycrane/agiros_pilot/velocity_command", 10);
+        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>("/flycrane1/agiros_pilot/velocity_command", 10);
         odom_sub = nh.subscribe<nav_msgs::Odometry>(bar_odometry_topic, 10, &DroneController::odometryCallbackBar, this);
     }
 
