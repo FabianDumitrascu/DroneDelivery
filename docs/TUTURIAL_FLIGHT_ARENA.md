@@ -8,6 +8,9 @@ This is a tutorial of how to make everything ready to let a drone fly in the tes
 2. [Setting up WiFi and ID](#setting-up-wifi-and-id)
 3. [Going into Agilicious@raspberrypi](#going-into-agiliciousraspberrypi)
 4. [Going to docker on your own computer](#going-to-docker-on-your-own-computer)
+5. [Going into Falcon@name](#going-into-falconname)
+6. [Going into Agilicious environment](#going-into-agilicious-environment)
+7. [Random stuff I wrote down but don't know where to put haha](#random-stuff-i-wrote-down-but-dont-know-where-to-put-haha)
 
 ## Safety
 For using the test arena there are some safety precautions and checklists that need to be taken into account. 
@@ -27,7 +30,7 @@ For the safety precautions, the following examples are the most important:
 1. Wear safety glasses if you are planning to fly
 2. Close black cage curtains (also the one to enter the cage)
 
-For all the safety precautions there is a [github page].
+For all the safety precautions there is a [GitHub page](link-to-github-page).
 
 ## Setting up WiFi and ID
 First we need to make sure that a connection can be made with the drone. Therefore we need to do the following things:
@@ -56,6 +59,6 @@ We need to go in a docker on our own computer as well. Follow these steps:
 2. 
 
 ## Random stuff I wrote down but don't know where to put haha
-1. We need to tell ros who is master and who is slave. 1 drone master and 1 drone slave is possible, but so is making the computer the master. But when the computer crashes drones will go to narnia. For this you can make a file where you define the master and slave and their IDs.
+1. We need to tell ROS who is master and who is slave. 1 drone master and 1 drone slave is possible, but so is making the computer the master. But when the computer crashes drones will go to Narnia. For this you can make a file where you define the master and slave and their IDs.
 3. `sudo docker system prune -a -f` (needed to write this down from a master's student)
 4. When placing the drone, the battery connection side needs to face desks
