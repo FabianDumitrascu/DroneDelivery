@@ -15,7 +15,7 @@ This is a tutorial of how to make everything ready to let a drone fly in the tes
 For using the test arena there are some safety precautions and checklists that need to be taken into account. 
 
 For the drone(s) these are:
-1. Needs to have 4 motion capture balls attached
+1. Needs to have 4 motion capture balls attached (the bar also)
 2. Test if propellers are well attached (and intact)
 3. Make sure raspberrypi is connected. Green light means good, red light means bad. In that case you can press the button or reset.
 4. Battery cables need to be on the top side (makes sound when you connect the battery to the drone)
