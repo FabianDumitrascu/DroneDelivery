@@ -7,8 +7,8 @@ This is a tutorial of how to make everything ready to let a drone fly in the tes
 1. [Safety](#safety)
 2. [Setting up WiFi and ID](#setting-up-wifi-and-id)
 3. [Going into Agilicious@raspberrypi](#going-into-agiliciousraspberrypi)
-4. [Going to docker on your own computer](#going-to-docker-on-your-own-computer)
-5. [Going into Falcon@name](#going-into-falconname)
+4. [Going into Falcon@name](#going-into-falconname)
+5. [Going to docker on your own computer](#going-to-docker-on-your-own-computer)
 6. [Going into Agilicious environment](#going-into-agilicious-environment)
 7. [Random stuff I wrote down but don't know where to put haha](#random-stuff-i-wrote-down-but-dont-know-where-to-put-haha)
 
