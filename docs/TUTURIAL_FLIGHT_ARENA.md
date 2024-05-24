@@ -3,6 +3,8 @@
 ## Introduction
 This is a tutorial of how to make everything ready to let a drone fly in the test arena and run your scripts. It is important to know that this tutorial is not complete, nor 100% right. Some things can also be a bit vague or misleading.
 
+You will need 3 different terminal screens, so using terminator app is adviced. You can copy an tab with `docker exec -it ...... bash`
+
 ## Table of Contents
 1. [Safety](#safety)
 2. [Setting up WiFi and ID](#setting-up-wifi-and-id)
