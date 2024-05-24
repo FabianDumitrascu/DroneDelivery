@@ -55,7 +55,8 @@ Connection to make or something?
 ## Going into Agilicious environment
 We need to go in a docker on our own computer as well. Follow these steps:
 1. You need to go in docker
-2. 
+2. Perform `catkin build` like normal and source it
+3. Create some sort of file where
 
 ## Random stuff I wrote down but don't know where to put haha
 1. We need to tell ROS who is master and who is slave. 1 drone master and 1 drone slave is possible, but so is making the computer the master. But when the computer crashes drones will go to Narnia. For this you can make a file where you define the master and slave and their IDs.
