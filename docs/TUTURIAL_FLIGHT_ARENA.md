@@ -24,9 +24,16 @@ We need to go into the docker environment of the rasberrypi. This is done by:
 4. Go into the docker environment by the standard way
 5. Time to build the catkin, but by the following code: `catkin build agiros`
 6. Source the `source/devel/setup.bash`
-7. Source something else lol
+7. Source your own script here as well
+
+NOTE: Specify quad_name:=falcon1 when launching (or falcon 2)
 
 ## Going to docker on your own computer
 We need to go in a docker on our own computer as well. Follow these steps:
-1. 
+1. You need to go in docker and connect somehow haha
+
+## Random stuff I wrote down but don't know where to put haha
+1. We need to tell ros who is master and who is slave. 1 drone master and 1 drone slave is possible, but so is making the computer the master. But when computer crashes drones will go to narnia.
+2. Sudo docker system prune -a -f (needed to write this down from masters student)
+3. When placing drone, battery connection side needs to face desks
 
