@@ -7,35 +7,24 @@
 #include <condition_variable>
 #include <mutex>
 
+// Global variables
+double end_angle_degrees, radius;
+double target_x, target_y, target_z;
+
+
+
 class CirclePathController {
 public:
-    CirclePathController(double radius, double end_angle_degrees, int steps = -1) 
-        : centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0), 
+    CirclePathController(ros::NodeHandle& nh, double radius, double end_angle_degrees, int steps = -1) 
+        : centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0), nh(nh),
           degree_increment(30.0), radius(radius), end_angle_degrees(end_angle_degrees),
           init_position_flycrane_set(false), init_position_flycrane1_set(false),
-          target_x(2.0), target_y(2.0), target_z(1.0), angle_degrees(0.0), start_angle_degrees(0.0), steps(steps) {
+          angle_degrees(0.0), start_angle_degrees(0.0), steps(steps) {
 
-        nh = ros::NodeHandle("~");
-
-        if (!nh.getParam("end_angle_degrees", end_angle_degrees)) {
-            ROS_WARN("Could not retrieve 'end_angle_degrees' from the parameter server; defaulting to 90 degrees");
-            end_angle_degrees = 90.0;
-        }
-
-        if (!nh.getParam("target_x", target_x)) {
-            ROS_WARN("Could not retrieve 'target_x' from the parameter server; defaulting to 2.0");
-            target_x = 2.0;
-        }
-
-        if (!nh.getParam("target_y", target_y)) {
-            ROS_WARN("Could not retrieve 'target_y' from the parameter server; defaulting to 2.0");
-            target_y = 2.0;
-        }
-
-        if (!nh.getParam("target_z", target_z)) {
-            ROS_WARN("Could not retrieve 'target_z' from the parameter server; defaulting to 1.0");
-            target_z = 1.0;
-        }
+        // Assign values from global variables to member variables
+        target_x = ::target_x;
+        target_y = ::target_y;
+        target_z = ::target_z;
 
         // Calculate the number of steps, if none inputted. 
         if (steps == -1) {
@@ -53,24 +42,24 @@ public:
     }
 
 private:
-    ros::NodeHandle nh;
+    ros::NodeHandle& nh;
     ros::Publisher pose_pub_flycrane, pose_pub_flycrane1;
     ros::Subscriber odom_sub_flycrane, odom_sub_flycrane1;
     ros::Timer timer, shutdown_timer;
     bool init_position_flycrane_set, init_position_flycrane1_set;
     int steps;
-    double radius;
     double centerX, centerY, centerZ;
     double startX, startY;
-    double target_x, target_y, target_z;
     double angle_degrees, start_angle_degrees;
-    double end_angle_degrees;
+    
     double degree_increment;
     geometry_msgs::Point initial_position_flycrane, initial_position_flycrane1;
     geometry_msgs::PoseStamped pose_flycrane, pose_flycrane1;
     geometry_msgs::PoseStamped initialCenter;
     std::mutex mutex_;
     std::condition_variable cv_;
+
+    double radius, end_angle_degrees, target_x, target_y, target_z;
 
     void OdometryCallbackFlycrane(const nav_msgs::Odometry::ConstPtr& msg) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -148,13 +137,13 @@ private:
         timer = nh.createTimer(ros::Duration(0.8), &CirclePathController::updateCallback, this, false);
     }
 
-    CalculateCenter() {
+    void CalculateCenter() {
         geometry_msgs::PoseStamped pose;
         pose.pose.position.x = (initial_position_flycrane.x + initial_position_flycrane1.x) / 2;
         pose.pose.position.y = (initial_position_flycrane.y + initial_position_flycrane1.y) / 2;
         pose.pose.position.z = (initial_position_flycrane.z + initial_position_flycrane1.z) / 2;
         ROS_INFO("Calculated center position at x=%f, y=%f, z=%f", pose.pose.position.x, pose.pose.position.y, pose.pose.position.z);
-        initial_center = pose;
+        initialCenter = pose;
     }
 
     void SendToCenter() {
@@ -264,10 +253,41 @@ private:
     }
 };
 
+void RetrieveParams(ros::NodeHandle& nh){
+    if (!nh.getParam("radius", radius)) {
+        ROS_WARN("Could not retrieve 'radius' from the parameter server; defaulting to 1.0");
+        radius = 1.0;
+    }
+
+    if (!nh.getParam("end_angle_degrees", end_angle_degrees)) {
+        ROS_WARN("Could not retrieve 'end_angle_degrees' from the parameter server; defaulting to 90 degrees");
+        end_angle_degrees = 90.0;
+    }
+
+    if (!nh.getParam("target_x", target_x)) {
+        ROS_WARN("Could not retrieve 'target_x' from the parameter server; defaulting to 2.0");
+        target_x = 2.0;
+    }
+
+    if (!nh.getParam("target_y", target_y)) {
+        ROS_WARN("Could not retrieve 'target_y' from the parameter server; defaulting to 2.0");
+        target_y = 2.0;
+    }
+
+    if (!nh.getParam("target_z", target_z)) {
+        ROS_WARN("Could not retrieve 'target_z' from the parameter server; defaulting to 1.0");
+        target_z = 1.0;
+    }
+};
+
 int main(int argc, char **argv) {
+    ros::init(argc, argv, "circle_path_controller"); // Ensure ros::init is called first
+    ros::NodeHandle nh("~"); // Create NodeHandle after ros::init
     std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait 4 seconds before takeoff
-    ros::init(argc, argv, "circle_path_controller");
-    CirclePathController controller(1, 90.0);
+    RetrieveParams(nh);
+    CirclePathController controller(nh, radius, end_angle_degrees);
     ros::spin();
     return 0;
 }
+
+
