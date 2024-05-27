@@ -83,6 +83,21 @@ private:
         return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) + pow(p1.z - p2.z, 2));
     }
 
+    geometry_msgs::PoseStamped CalculateStepsVector() {
+        geometry_msgs::PoseStamped stepsVector;
+        double xValue = (target_x - centerX);
+        double yValue = (target_y - centerY);
+        double zValue = (target_z - centerZ);
+
+        double length = sqrt(xValue * xValue + yValue * yValue + zValue * zValue);
+
+        stepsVector.pose.position.x = xValue / length;
+        stepsVector.pose.position.y = yValue / length;
+        stepsVector.pose.position.z = zValue / length;
+
+        return stepsVector;
+    }
+
     std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> CalculateNormalVector() {
         geometry_msgs::PoseStamped leftDrone;
         geometry_msgs::PoseStamped rightDrone;
@@ -160,6 +175,10 @@ private:
         initialCenter = pose;
     }
 
+    void updateCallback(const ros::TimerEvent& event) {
+        // TODO: Add your update logic here
+    }
+
     void SendToCenter() {
         CalculateCenter();
 
@@ -169,6 +188,7 @@ private:
         geometry_msgs::PoseStamped rightDrone = dronePositions.second;
         pose_pub_flycrane.publish(leftDrone);
         pose_pub_flycrane1.publish(rightDrone);
+        
     }
 
     void UpdatePositions() {
@@ -189,39 +209,6 @@ private:
         pose_pub_flycrane1.publish(pose_flycrane1);
 
         ROS_INFO("Updated positions: x=%f, y=%f, z=%f", centerX, centerY, centerZ);
-    }
-
-    void updateCallback(const ros::TimerEvent&) {
-        // updateDronesPosition();
-        
-        // double next_angle = angle_degrees + degree_increment;
-        // if (end_angle_degrees > start_angle_degrees) {
-        //     if (next_angle >= end_angle_degrees) {
-        //         angle_degrees = end_angle_degrees;
-        //         ROS_INFO("Reached end angle: %f degrees", angle_degrees);
-        //         timer.stop(); // Stop the main timer to prevent further update and set a one-time timer to shut down after 10 seconds
-        //         updateDronesPosition();
-        //         shutdown_timer = nh.createTimer(ros::Duration(10), [this](const ros::TimerEvent&) {
-        //             ROS_INFO("Shutting down after delay.");
-        //             ros::shutdown();
-        //         }, true); // true makes it a one-shot timer
-        //     } else {
-        //         angle_degrees = next_angle;
-        //     }
-        // } else {
-        //     if (next_angle <= end_angle_degrees) {
-        //         angle_degrees = end_angle_degrees;
-        //         ROS_INFO("Reached end angle: %f degrees", angle_degrees);
-        //         timer.stop(); // Stop the main timer to prevent further update and set a one-time timer to shut down after 10 seconds
-        //         updateDronesPosition();
-        //         shutdown_timer = nh.createTimer(ros::Duration(10), [this](const ros::TimerEvent&) {
-        //             ROS_INFO("Shutting down after delay.");
-        //             ros::shutdown();
-        //         }, true); // true makes it a one-shot timer
-        //     } else {
-        //         angle_degrees = next_angle;
-        //     }
-        // }
     }
 
     double degreesToRadians(double degrees) {
