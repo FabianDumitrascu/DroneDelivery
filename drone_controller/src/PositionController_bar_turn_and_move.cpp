@@ -6,6 +6,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
+#include <vector>
 
 // Global variables
 double end_angle_degrees, radius;
@@ -58,6 +59,7 @@ private:
     std::condition_variable cv_;
 
     double radius, end_angle_degrees, target_x, target_y, target_z;
+    std::vector<geometry_msgs::PoseStamped> positions_flycrane, positions_flycrane1;
 
     void OdometryCallbackFlycrane(const nav_msgs::Odometry::ConstPtr& msg) {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -83,28 +85,13 @@ private:
         return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) + pow(p1.z - p2.z, 2));
     }
 
-    geometry_msgs::PoseStamped CalculateStepsVector() {
-        geometry_msgs::PoseStamped stepsVector;
-        double xValue = (target_x - centerX);
-        double yValue = (target_y - centerY);
-        double zValue = (target_z - centerZ);
-
-        double length = sqrt(xValue * xValue + yValue * yValue + zValue * zValue);
-
-        stepsVector.pose.position.x = xValue / length;
-        stepsVector.pose.position.y = yValue / length;
-        stepsVector.pose.position.z = zValue / length;
-
-        return stepsVector;
-    }
-
-    std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> CalculateNormalVector() {
+    std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> CalculateNormalVector(double cx, double cy, double cz) {
         geometry_msgs::PoseStamped leftDrone;
         geometry_msgs::PoseStamped rightDrone;
-        double target_z = initialCenter.pose.position.z;  // Assuming constant z-plane
+        double target_z = cz;  // Assuming constant z-plane
 
-        double dx = target_x - initialCenter.pose.position.x;
-        double dy = target_y - initialCenter.pose.position.y;
+        double dx = target_x - cx;
+        double dy = target_y - cy;
         double length = sqrt(dx * dx + dy * dy);
 
         if (length != 0) {
@@ -114,13 +101,13 @@ private:
 
             // Calculate potential positions
             geometry_msgs::Point leftPoint, rightPoint;
-            leftPoint.x = initialCenter.pose.position.x + radius * normal_x;
-            leftPoint.y = initialCenter.pose.position.y + radius * normal_y;
-            leftPoint.z = initialCenter.pose.position.z;
+            leftPoint.x = cx + radius * normal_x;
+            leftPoint.y = cy + radius * normal_y;
+            leftPoint.z = cz;
 
-            rightPoint.x = initialCenter.pose.position.x - radius * normal_x;
-            rightPoint.y = initialCenter.pose.position.y - radius * normal_y;
-            rightPoint.z = initialCenter.pose.position.z;
+            rightPoint.x = cx - radius * normal_x;
+            rightPoint.y = cy - radius * normal_y;
+            rightPoint.z = cz;
 
             // Determine which drone is closer to the left point
             double distanceFlycraneToLeft = calculateDistance(initial_position_flycrane, leftPoint);
@@ -140,16 +127,52 @@ private:
                      rightDrone.pose.position.x, rightDrone.pose.position.y, rightDrone.pose.position.z);
         } else {
             // Handle the case where length is zero to avoid division by zero
-            leftDrone.pose.position = initialCenter.pose.position;
-            rightDrone.pose.position = initialCenter.pose.position;
-
-            // Move the left drone to the right by the radius
-            leftDrone.pose.position.x += radius;
-            rightDrone.pose.position.x -= radius;
+            leftDrone.pose.position.x = cx + radius;
+            leftDrone.pose.position.y = cy;
+            leftDrone.pose.position.z = cz;
+            rightDrone.pose.position.x = cx - radius;
+            rightDrone.pose.position.y = cy;
+            rightDrone.pose.position.z = cz;
 
             ROS_WARN("The target position is the same as the initial center position. Moving the drones to the left and right by the radius.");
         }
         return std::make_pair(leftDrone, rightDrone);
+    }
+
+    geometry_msgs::PoseStamped CalculateStepsVector() {
+        geometry_msgs::PoseStamped stepsVector;
+        double xValue = (target_x - centerX);
+        double yValue = (target_y - centerY);
+        double zValue = (target_z - centerZ);
+
+        double length = sqrt(xValue * xValue + yValue * yValue + zValue * zValue);
+
+        stepsVector.pose.position.x = xValue / steps;
+        stepsVector.pose.position.y = yValue / steps;
+        stepsVector.pose.position.z = zValue / steps;
+
+        return stepsVector;
+    }
+
+    void GeneratePositions() {
+        geometry_msgs::PoseStamped stepsVector = CalculateStepsVector();
+        double cx = centerX;
+        double cy = centerY;
+        double cz = centerZ;
+
+        positions_flycrane.clear();
+        positions_flycrane1.clear();
+
+        for (int i = 0; i <= steps; ++i) {
+            cx += stepsVector.pose.position.x;
+            cy += stepsVector.pose.position.y;
+            cz += stepsVector.pose.position.z;
+
+            std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> dronePositions = CalculateNormalVector(cx, cy, cz);
+
+            positions_flycrane.push_back(dronePositions.first);
+            positions_flycrane1.push_back(dronePositions.second);
+        }
     }
 
     void waitForInitialPositions() {
@@ -161,6 +184,9 @@ private:
 
         // Send drones to center positions
         SendToCenter();
+
+        // Generate all positions for the drones
+        GeneratePositions();
 
         // Start the timer for regular updates
         timer = nh.createTimer(ros::Duration(0.8), &CirclePathController::updateCallback, this, false);
@@ -175,40 +201,31 @@ private:
         initialCenter = pose;
     }
 
-    void updateCallback(const ros::TimerEvent& event) {
-        // TODO: Add your update logic here
-    }
-
     void SendToCenter() {
         CalculateCenter();
 
         ROS_INFO("Sending drones to center positions: x=%f, y=%f, z=%f", initialCenter.pose.position.x, initialCenter.pose.position.y, initialCenter.pose.position.z);
-        std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> dronePositions = CalculateNormalVector();
+        std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> dronePositions = CalculateNormalVector(initialCenter.pose.position.x, initialCenter.pose.position.y, initialCenter.pose.position.z);
         geometry_msgs::PoseStamped leftDrone = dronePositions.first;
         geometry_msgs::PoseStamped rightDrone = dronePositions.second;
         pose_pub_flycrane.publish(leftDrone);
         pose_pub_flycrane1.publish(rightDrone);
-        
     }
 
     void UpdatePositions() {
-        // Update the center position
-        double increment_x = (target_x - startX) / static_cast<double>(steps);
-        centerX += increment_x;
+        static int step = 0;
+        if (step < positions_flycrane.size() && step < positions_flycrane1.size()) {
+            pose_pub_flycrane.publish(positions_flycrane[step]);
+            pose_pub_flycrane1.publish(positions_flycrane1[step]);
+            step++;
+        } else {
+            timer.stop();
+            ROS_INFO("Reached target positions.");
+        }
+    }
 
-        pose_flycrane.pose.position.x = centerX; 
-        pose_flycrane1.pose.position.x = centerX;
-        pose_flycrane.pose.position.y = centerY + radius;
-        pose_flycrane1.pose.position.y = centerY - radius;
-        pose_flycrane.pose.position.z = centerZ;
-        pose_flycrane1.pose.position.z = centerZ;
-        pose_flycrane.pose.orientation.w = 1.0;
-        pose_flycrane1.pose.orientation.w = 1.0;
-
-        pose_pub_flycrane.publish(pose_flycrane);
-        pose_pub_flycrane1.publish(pose_flycrane1);
-
-        ROS_INFO("Updated positions: x=%f, y=%f, z=%f", centerX, centerY, centerZ);
+    void updateCallback(const ros::TimerEvent&) {
+        UpdatePositions();
     }
 
     double degreesToRadians(double degrees) {
@@ -216,7 +233,7 @@ private:
     }
 
     int calculateSteps() {        
-        return 4; // Missing semicolon fixed
+        return 50; // Adjust this value as needed
     }
 };
 
