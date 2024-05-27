@@ -11,12 +11,10 @@
 double end_angle_degrees, radius;
 double target_x, target_y, target_z;
 
-
-
 class CirclePathController {
 public:
     CirclePathController(ros::NodeHandle& nh, double radius, double end_angle_degrees, int steps = -1) 
-        : centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0), nh(nh),
+        : nh(nh), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0),
           degree_increment(30.0), radius(radius), end_angle_degrees(end_angle_degrees),
           init_position_flycrane_set(false), init_position_flycrane1_set(false),
           angle_degrees(0.0), start_angle_degrees(0.0), steps(steps) {
@@ -71,6 +69,20 @@ private:
         }
     }
 
+    void OdometryCallbackFlycrane1(const nav_msgs::Odometry::ConstPtr& msg) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!init_position_flycrane1_set) {
+            init_position_flycrane1_set = true;
+            initial_position_flycrane1 = msg->pose.pose.position;
+            ROS_INFO("The initial position of flycrane1 is set at x=%f, y=%f, z=%f", initial_position_flycrane1.x, initial_position_flycrane1.y, initial_position_flycrane1.z);
+            cv_.notify_all();
+        }
+    }
+
+    double calculateDistance(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2) {
+        return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) + pow(p1.z - p2.z, 2));
+    }
+
     std::pair<geometry_msgs::PoseStamped, geometry_msgs::PoseStamped> CalculateNormalVector() {
         geometry_msgs::PoseStamped leftDrone;
         geometry_msgs::PoseStamped rightDrone;
@@ -85,15 +97,27 @@ private:
             double normal_x = -dy / length;
             double normal_y = dx / length;
 
-            // Left drone position
-            leftDrone.pose.position.x = initialCenter.pose.position.x + radius * normal_x;
-            leftDrone.pose.position.y = initialCenter.pose.position.y + radius * normal_y;
-            leftDrone.pose.position.z = initialCenter.pose.position.z;
+            // Calculate potential positions
+            geometry_msgs::Point leftPoint, rightPoint;
+            leftPoint.x = initialCenter.pose.position.x + radius * normal_x;
+            leftPoint.y = initialCenter.pose.position.y + radius * normal_y;
+            leftPoint.z = initialCenter.pose.position.z;
 
-            // Right drone position
-            rightDrone.pose.position.x = initialCenter.pose.position.x - radius * normal_x;
-            rightDrone.pose.position.y = initialCenter.pose.position.y - radius * normal_y;
-            rightDrone.pose.position.z = initialCenter.pose.position.z;
+            rightPoint.x = initialCenter.pose.position.x - radius * normal_x;
+            rightPoint.y = initialCenter.pose.position.y - radius * normal_y;
+            rightPoint.z = initialCenter.pose.position.z;
+
+            // Determine which drone is closer to the left point
+            double distanceFlycraneToLeft = calculateDistance(initial_position_flycrane, leftPoint);
+            double distanceFlycrane1ToLeft = calculateDistance(initial_position_flycrane1, leftPoint);
+
+            if (distanceFlycraneToLeft < distanceFlycrane1ToLeft) {
+                leftDrone.pose.position = leftPoint;
+                rightDrone.pose.position = rightPoint;
+            } else {
+                leftDrone.pose.position = rightPoint;
+                rightDrone.pose.position = leftPoint;
+            }
 
             ROS_INFO("Calculated normal vectors: left drone at x=%f, y=%f, z=%f; "
                      "right drone at x=%f, y=%f, z=%f", 
@@ -111,16 +135,6 @@ private:
             ROS_WARN("The target position is the same as the initial center position. Moving the drones to the left and right by the radius.");
         }
         return std::make_pair(leftDrone, rightDrone);
-    }
-
-    void OdometryCallbackFlycrane1(const nav_msgs::Odometry::ConstPtr& msg) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        if (!init_position_flycrane1_set) {
-            init_position_flycrane1_set = true;
-            initial_position_flycrane1 = msg->pose.pose.position;
-            ROS_INFO("The initial position of flycrane1 is set at x=%f, y=%f, z=%f", initial_position_flycrane1.x, initial_position_flycrane1.y, initial_position_flycrane1.z);
-            cv_.notify_all();
-        }
     }
 
     void waitForInitialPositions() {
@@ -159,7 +173,7 @@ private:
 
     void UpdatePositions() {
         // Update the center position
-        double increment_x = (target_x - startX ) / static_cast<double>(steps);
+        double increment_x = (target_x - startX) / static_cast<double>(steps);
         centerX += increment_x;
 
         pose_flycrane.pose.position.x = centerX; 
@@ -210,40 +224,6 @@ private:
         // }
     }
 
-    void updateDronesPosition() {
-        // double radius = 1.0;
-        // double angle_rad = degreesToRadians(angle_degrees);
-
-        // // Update `centerX` and `centerY`
-        // centerX += increment_x;
-        // centerY += increment_y;
-        
-        // centerZ = target_z;
-
-        // geometry_msgs::PoseStamped new_pose_flycrane, new_pose_flycrane1;
-        // new_pose_flycrane.pose.position.x = centerX + radius * cos(angle_rad);
-        // new_pose_flycrane.pose.position.y = centerY + radius * sin(angle_rad);
-        // new_pose_flycrane.pose.position.z = centerZ+1.0;
-        // new_pose_flycrane1.pose.position.x = centerX + radius * cos(angle_rad + M_PI);
-        // new_pose_flycrane1.pose.position.y = centerY + radius * sin(angle_rad + M_PI);
-        // new_pose_flycrane1.pose.position.z = centerZ+1.0;
-        
-        // // Orientation
-        // double half_angle_rad = angle_rad / 2;
-        // new_pose_flycrane.pose.orientation.z = sin(half_angle_rad);
-        // new_pose_flycrane.pose.orientation.w = cos(half_angle_rad);
-        // new_pose_flycrane1.pose.orientation.z = sin(half_angle_rad + M_PI);
-        // new_pose_flycrane1.pose.orientation.w = cos(half_angle_rad + M_PI);
-
-        // pose_pub_flycrane.publish(new_pose_flycrane);
-        // pose_pub_flycrane1.publish(new_pose_flycrane1);
-
-        // ROS_INFO("Updated angle: %f", angle_degrees);
-        // ROS_INFO("Center position: x=%f, y=%f", centerX, centerY);
-        // //ROS_INFO("flycrane position: x=%f, y=%f, z=%f", new_pose_flycrane.pose.position.x, new_pose_flycrane.pose.position.y, new_pose_flycrane.pose.position.z);
-        // //ROS_INFO("flycrane1 position: x=%f, y=%f, z=%f", new_pose_flycrane1.pose.position.x, new_pose_flycrane1.pose.position.y, new_pose_flycrane1.pose.position.z);
-    }
-
     double degreesToRadians(double degrees) {
         return degrees * M_PI / 180.0;
     }
@@ -289,5 +269,3 @@ int main(int argc, char **argv) {
     ros::spin();
     return 0;
 }
-
-
