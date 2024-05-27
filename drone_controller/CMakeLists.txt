@@ -8,10 +8,11 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   roscpp
   std_msgs
+  agiros_msgs
 )
 
 catkin_package(
-  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp std_msgs
+  CATKIN_DEPENDS geometry_msgs nav_msgs roscpp std_msgs agiros_msgs
 )
 
 include_directories(
@@ -66,3 +67,6 @@ target_link_libraries(Velocity_bar_turn_and_move_node ${catkin_LIBRARIES})
 # Command 2 drones Velocity controller 2 masses Turn and Move Node
 add_executable(Velocity_2_masses_turn_and_move_node src/VelocityController_2_masses_turn_and_move.cpp)
 target_link_libraries(Velocity_2_masses_turn_and_move_node ${catkin_LIBRARIES})
+
+add_executable(PathController_node src/PathController.cpp)
+target_link_libraries(PathController_node ${catkin_LIBRARIES})
