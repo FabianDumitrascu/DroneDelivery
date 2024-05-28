@@ -83,6 +83,7 @@ private:
     ros::Timer transition_timer;
 
 public:
+<<<<<<< HEAD
     DroneController()
         : nh("~"),
           pid(0.0, 0.0, 0.0, 10.0), // Initializing with default values
@@ -96,6 +97,12 @@ public:
         nh.param<std::string>("bar_odometry_topic", bar_odometry_topic, "/bar/odometry_sensor1/odometry");
         nh.param<std::string>("drone_id1", drone_id1, "falcon1");
         nh.param<std::string>("drone_id2", drone_id2, "falcon2");
+=======
+    DroneController() : nh("~"), pid(1.0, 0.01, 0.05, 10.0), pid1(1.0, 0.01, 0.05, 10.0) {
+        nh.param<std::string>("drone_id1", drone_id1, "flycrane");
+        nh.param<std::string>("drone_id2", drone_id2, "flycrane1");
+        nh.param<std::string>("bar_odometry_topic", bar_odometry_topic, "/bar/agiros_pilot/odometry");
+>>>>>>> origin/main
         nh.param<double>("target_x", target_x, 2.0);
         nh.param<double>("target_y", target_y, 1.0);
         nh.param<double>("target_z", target_z, 1.0);
@@ -113,7 +120,57 @@ public:
         target_yaw_radians = normalizeAngle(target_yaw_end * M_PI / 180.0); // Initialize target_yaw_radians
         ROS_INFO("target_yaw_radians: %f", target_yaw_radians);
         setupCommunication();
+<<<<<<< HEAD
         setupTimer();
+=======
+        fetchInitialYaw();
+    }
+    double normalizeAngle(double angle) {
+        while (angle > M_PI) angle -= 2.0 * M_PI;
+        while (angle < -M_PI) angle += 2.0 * M_PI;
+        return angle;
+    }
+    void fetchInitialYaw() {
+        bool initialYawFound = false;
+        while (!initialYawFound) {
+            auto msg = ros::topic::waitForMessage<nav_msgs::Odometry>(bar_odometry_topic, nh, ros::Duration(5));
+            if (msg) {
+                tf::Quaternion q(msg->pose.pose.orientation.x,
+                                msg->pose.pose.orientation.y,
+                                msg->pose.pose.orientation.z,
+                                msg->pose.pose.orientation.w);
+                double roll, pitch, yaw;
+                tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+                initial_yaw = yaw;  // Use the yaw extracted from quaternion
+                initial_yaw_degrees = normalizeAngle(initial_yaw) * 180.0 / M_PI;
+                target_yaw = initial_yaw_degrees;
+                if (target_yaw_end_normalized_degrees > initial_yaw_degrees && target_yaw_end_normalized_degrees - initial_yaw_degrees > 180.0) {
+                    target_yaw_increment = -30.0;  // e.g., from -90 to 180 degrees
+                    target_yaw_end_normalized_degrees -= 360.0;
+                } else if (target_yaw_end_normalized_degrees > initial_yaw_degrees && target_yaw_end_normalized_degrees - initial_yaw_degrees <= 180.0) {
+                    target_yaw_increment = 30.0;    // e.g., from 0 to 90 degrees
+                } else if (target_yaw_end_normalized_degrees < initial_yaw_degrees && initial_yaw_degrees - target_yaw_end_normalized_degrees > 180.0) {
+                    target_yaw_increment = 30.0;    // e.g., from 180 to -90 degrees
+                    target_yaw_end_normalized_degrees += 360.0;
+                } else if (target_yaw_end_normalized_degrees < initial_yaw_degrees && initial_yaw_degrees - target_yaw_end_normalized_degrees <= 180.0) {
+                    target_yaw_increment = -30.0;   // e.g., from 90 to 0 degrees
+                }
+                ROS_INFO("Initial Yaw: %f degrees", initial_yaw_degrees);
+                ROS_INFO("End Yaw: %f degrees", target_yaw_end_normalized_degrees);
+                ROS_INFO("target_yaw_increment: %f", target_yaw_increment);
+                initialYawFound = true;
+            } else {
+                ROS_WARN("No odometry message received. Retrying in 1 second...");
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+        }
+    }
+    
+    void setupCommunication() {
+        vel_pub = nh.advertise<geometry_msgs::TwistStamped>("/flycrane/agiros_pilot/velocity_command", 10);
+        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>("/flycrane1/agiros_pilot/velocity_command", 10);
+        odom_sub = nh.subscribe<nav_msgs::Odometry>(bar_odometry_topic, 10, &DroneController::odometryCallbackBar, this);
+>>>>>>> origin/main
     }
 
     void setupTimer() {

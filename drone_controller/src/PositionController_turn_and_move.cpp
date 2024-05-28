@@ -27,11 +27,19 @@ public:
         nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
         nh.getParam("/BEP/Position_turn_and_move_node/target_z", target_z);
 
+<<<<<<< HEAD
         odom_sub_falcon1 = nh.subscribe("/falcon1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
         odom_sub_falcon2 = nh.subscribe("/falcon2/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon2, this);
 
         pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/falcon1/agiros_pilot/go_to_pose", 2);
         pose_pub_falcon2 = nh.advertise<geometry_msgs::PoseStamped>("/falcon2/agiros_pilot/go_to_pose", 2);
+=======
+        odom_sub_flycrane = nh.subscribe("/flycrane/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackflycrane, this);
+        odom_sub_flycrane1 = nh.subscribe("/flycrane1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackflycrane1, this);
+
+        pose_pub_flycrane = nh.advertise<geometry_msgs::PoseStamped>("/flycrane/agiros_pilot/go_to_pose", 2);
+        pose_pub_flycrane1 = nh.advertise<geometry_msgs::PoseStamped>("/flycrane1/agiros_pilot/go_to_pose", 2);
+>>>>>>> origin/main
         
 
         timer = nh.createTimer(ros::Duration(0.8), &CirclePathController::updateCallback, this, false, false);
@@ -40,8 +48,13 @@ public:
 
 private:
     ros::NodeHandle nh;
+<<<<<<< HEAD
     ros::Publisher pose_pub_falcon1, pose_pub_falcon2;
     ros::Subscriber odom_sub_falcon1, odom_sub_falcon2;
+=======
+    ros::Publisher pose_pub_flycrane, pose_pub_flycrane1;
+    ros::Subscriber odom_sub_flycrane, odom_sub_flycrane1;
+>>>>>>> origin/main
     ros::Timer timer, initial_position_timer, shutdown_timer;
     bool initial_positions_set;
     double centerX, centerY, centerZ;
@@ -50,7 +63,11 @@ private:
     double angle_degrees, start_angle_degrees;
     double end_angle_degrees;
     double degree_increment, increment_x, increment_y;
+<<<<<<< HEAD
     geometry_msgs::Point initial_position_falcon1, initial_position_falcon2;
+=======
+    geometry_msgs::Point initial_position_flycrane, initial_position_flycrane1;
+>>>>>>> origin/main
 
     void normalizeEndAngleDegrees() {
         if (end_angle_degrees > 180.0) {
@@ -60,9 +77,20 @@ private:
         }
     }
 
+<<<<<<< HEAD
     void odometryCallbackFalcon1(const nav_msgs::Odometry::ConstPtr& msg) {
+=======
+    void odometryCallbackflycrane(const nav_msgs::Odometry::ConstPtr& msg) {
         if (initial_positions_set==false) {
-            initial_position_falcon1 = msg->pose.pose.position;
+            initial_position_flycrane = msg->pose.pose.position;
+            checkInitialPositionsSet();
+        }
+    }
+
+    void odometryCallbackflycrane1(const nav_msgs::Odometry::ConstPtr& msg) {
+>>>>>>> origin/main
+        if (initial_positions_set==false) {
+            initial_position_flycrane1 = msg->pose.pose.position;
             checkInitialPositionsSet();
         }
     }
@@ -75,11 +103,19 @@ private:
     }
 
     void checkInitialPositionsSet() {
+<<<<<<< HEAD
         if (initial_position_falcon1.x != 0.0000000 && initial_position_falcon2.x != 0.0000000) {
             startX = (initial_position_falcon1.x + initial_position_falcon2.x) / 2;
             startY = (initial_position_falcon1.y + initial_position_falcon2.y) / 2;
             double dx = initial_position_falcon1.x - startX;
             double dy = initial_position_falcon1.y - startY;
+=======
+        if (initial_position_flycrane.x != 0.0000000 && initial_position_flycrane1.x != 0.0000000) {
+            startX = (initial_position_flycrane.x + initial_position_flycrane1.x) / 2;
+            startY = (initial_position_flycrane.y + initial_position_flycrane1.y) / 2;
+            double dx = initial_position_flycrane.x - startX;
+            double dy = initial_position_flycrane.y - startY;
+>>>>>>> origin/main
             centerX = startX;
             centerY = startY;
             normalizeEndAngleDegrees();
@@ -172,6 +208,7 @@ private:
         
         centerZ = target_z;
 
+<<<<<<< HEAD
         geometry_msgs::PoseStamped new_pose_falcon1, new_pose_falcon2;
         new_pose_falcon1.pose.position.x = centerX + radius * cos(angle_rad);
         new_pose_falcon1.pose.position.y = centerY + radius * sin(angle_rad);
@@ -189,11 +226,30 @@ private:
 
         pose_pub_falcon1.publish(new_pose_falcon1);
         pose_pub_falcon2.publish(new_pose_falcon2);
+=======
+        geometry_msgs::PoseStamped new_pose_flycrane, new_pose_flycrane1;
+        new_pose_flycrane.pose.position.x = centerX + radius * cos(angle_rad);
+        new_pose_flycrane.pose.position.y = centerY + radius * sin(angle_rad);
+        new_pose_flycrane.pose.position.z = centerZ+1.0;
+        new_pose_flycrane1.pose.position.x = centerX + radius * cos(angle_rad + M_PI);
+        new_pose_flycrane1.pose.position.y = centerY + radius * sin(angle_rad + M_PI);
+        new_pose_flycrane1.pose.position.z = centerZ+1.0;
+        
+        // Orientation
+        double half_angle_rad = angle_rad / 2;
+        new_pose_flycrane.pose.orientation.z = sin(half_angle_rad);
+        new_pose_flycrane.pose.orientation.w = cos(half_angle_rad);
+        new_pose_flycrane1.pose.orientation.z = sin(half_angle_rad + M_PI);
+        new_pose_flycrane1.pose.orientation.w = cos(half_angle_rad + M_PI);
+
+        pose_pub_flycrane.publish(new_pose_flycrane);
+        pose_pub_flycrane1.publish(new_pose_flycrane1);
+>>>>>>> origin/main
 
         ROS_INFO("Updated angle: %f", angle_degrees);
         ROS_INFO("Center position: x=%f, y=%f", centerX, centerY);
-        //ROS_INFO("Falcon position: x=%f, y=%f, z=%f", new_pose_falcon.pose.position.x, new_pose_falcon.pose.position.y, new_pose_falcon.pose.position.z);
-        //ROS_INFO("Falcon1 position: x=%f, y=%f, z=%f", new_pose_falcon1.pose.position.x, new_pose_falcon1.pose.position.y, new_pose_falcon1.pose.position.z);
+        //ROS_INFO("flycrane position: x=%f, y=%f, z=%f", new_pose_flycrane.pose.position.x, new_pose_flycrane.pose.position.y, new_pose_flycrane.pose.position.z);
+        //ROS_INFO("flycrane1 position: x=%f, y=%f, z=%f", new_pose_flycrane1.pose.position.x, new_pose_flycrane1.pose.position.y, new_pose_flycrane1.pose.position.z);
     }
 
     double degreesToRadians(double degrees) {

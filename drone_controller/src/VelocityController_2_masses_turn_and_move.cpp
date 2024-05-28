@@ -88,8 +88,8 @@ private:
 
 public:
     DroneController() : nh("~"), pid1(1.0, 0.01, 0.05, 10.0), pid2(1.0, 0.01, 0.05, 10.0) {
-        nh.param<std::string>("drone_id1", drone_id1, "falcon");
-        nh.param<std::string>("drone_id2", drone_id2, "falcon1");
+        nh.param<std::string>("drone_id1", drone_id1, "flycrane");
+        nh.param<std::string>("drone_id2", drone_id2, "flycrane1");
         nh.param<double>("Mid_x", Mid_x, 2.0);
         nh.param<double>("Mid_y", Mid_y, 1.0);
         nh.param<double>("Mid_z", Mid_z, 1.0);
@@ -140,8 +140,8 @@ public:
     
 
     void setupCommunication() {
-        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>("/falcon/agiros_pilot/velocity_command", 10);
-        vel_pub2 = nh.advertise<geometry_msgs::TwistStamped>("/falcon1/agiros_pilot/velocity_command", 10);
+        vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>("/flycrane/agiros_pilot/velocity_command", 10);
+        vel_pub2 = nh.advertise<geometry_msgs::TwistStamped>("/flycrane1/agiros_pilot/velocity_command", 10);
         odom_sub1 = nh.subscribe<nav_msgs::Odometry>("/mass1/agiros_pilot/odometry", 10, &DroneController::odometryCallback1, this);
         odom_sub2 = nh.subscribe<nav_msgs::Odometry>("/mass2/agiros_pilot/odometry", 10, &DroneController::odometryCallback2, this);
     }
