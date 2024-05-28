@@ -23,7 +23,7 @@ public:
         Kp(p), Ki(i), Kd(d), prev_error_x(0), prev_error_y(0), prev_error_z(0),
         integral_x(0), integral_y(0), integral_z(0), integral_limit(limit) {}
 
-    geometry_msgs::Twist computeControl(const geometry_msgs::Point& target, const geometry_msgs::Point& current, double dt) {
+    geometry_msgs::Twist computeControl(const geometry_msgs::Vector3& target, const geometry_msgs::Vector3& current, double dt) {
         double error_x = target.x - current.x;
         double error_y = target.y - current.y;
         double error_z = target.z - current.z;
@@ -81,6 +81,37 @@ private:
     double current_yaw; // Track current yaw
     ros::Timer update_timer;
     ros::Timer transition_timer;
+    geometry_msgs::Point previous_position_bar;
+    ros::Time previous_time_bar;
+    bool first_bar_message_received;
+    ros::Time translation_start_time;
+
+
+    geometry_msgs::Vector3 convertPointToVector(const geometry_msgs::Point& point) {
+        geometry_msgs::Vector3 vector;
+        vector.x = point.x;
+        vector.y = point.y;
+        vector.z = point.z;
+        return vector;
+    }
+
+    geometry_msgs::Vector3 computeParabolicTargetVelocity(double total_duration) {
+        geometry_msgs::Vector3 target_velocity;
+        ros::Duration elapsed = ros::Time::now() - translation_start_time;
+        double t = elapsed.toSec();
+        double remaining_time = total_duration - t;
+
+        // Kwadratische afname van de snelheid
+        double factor = 4 * t * remaining_time / (total_duration * total_duration);
+
+        target_velocity.x = (target_x - current_position_bar.x) * factor;
+        target_velocity.y = (target_y - current_position_bar.y) * factor;
+        target_velocity.z = (target_z - current_position_bar.z) * factor;
+        ROS_INFO("target_velocity: x: %f, y: %f, z: %f", target_velocity.x, target_velocity.y, target_velocity.z);
+        return target_velocity;
+    }
+
+
 
 public:
     DroneController()
@@ -91,7 +122,8 @@ public:
           phase(ROTATION),
           initial_positions_set(false),
           odometry_received1(false),
-          odometry_received2(false) {
+          odometry_received2(false),
+          first_bar_message_received(false) {
         
         nh.param<std::string>("bar_odometry_topic", bar_odometry_topic, "/bar/odometry_sensor1/odometry");
         nh.param<std::string>("drone_id1", drone_id1, "falcon1");
@@ -150,10 +182,10 @@ public:
         if (current_position1.z != 0.0) {
             odometry_received1 = true;
         }
-        if (phase == ROTATION and initial_positions_set == true) {
+        if (phase == ROTATION && initial_positions_set == true) {
             geometry_msgs::TwistStamped velocity_command1;
             velocity_command1.header.stamp = ros::Time::now();
-            velocity_command1.twist = pid_turn.computeControl(target_position1, msg->pose.pose.position, 1.0 / 50.0);
+            velocity_command1.twist = pid_turn.computeControl(convertPointToVector(target_position1), convertPointToVector(msg->pose.pose.position), 1.0 / 50.0);
             vel_pub.publish(velocity_command1);
         }
     }
@@ -163,31 +195,61 @@ public:
         if (current_position2.z != 0.0) {
             odometry_received2 = true;
         }
-        if (phase == ROTATION and initial_positions_set == true) {
+        if (phase == ROTATION && initial_positions_set == true) {
             geometry_msgs::TwistStamped velocity_command2;
             velocity_command2.header.stamp = ros::Time::now();
-            velocity_command2.twist = pid_turn.computeControl(target_position2, msg->pose.pose.position, 1.0 / 50.0);
+            velocity_command2.twist = pid_turn.computeControl(convertPointToVector(target_position2), convertPointToVector(msg->pose.pose.position), 1.0 / 50.0);
             vel_pub1.publish(velocity_command2);
         }
     }
 
+
     void odometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
         current_position_bar = msg->pose.pose.position;
-        if (phase == TRANSLATION and initial_positions_set == true) {
+        ros::Time current_time_bar = msg->header.stamp;
+
+        if (!first_bar_message_received) {
+            previous_position_bar = current_position_bar;
+            previous_time_bar = current_time_bar;
+            first_bar_message_received = true;
+            return;
+        }
+
+        double dt = (current_time_bar - previous_time_bar).toSec();
+        if (dt <= 0) {
+            return; // Avoid division by zero or negative time intervals
+        }
+
+        geometry_msgs::Vector3 bar_velocity;
+        bar_velocity.x = (current_position_bar.x - previous_position_bar.x) / dt;
+        bar_velocity.y = (current_position_bar.y - previous_position_bar.y) / dt;
+        bar_velocity.z = (current_position_bar.z - previous_position_bar.z) / dt;
+
+        previous_position_bar = current_position_bar;
+        previous_time_bar = current_time_bar;
+
+        if (phase == TRANSLATION && initial_positions_set) {
             geometry_msgs::TwistStamped velocity_command1;
             geometry_msgs::TwistStamped velocity_command2;
             velocity_command1.header.stamp = ros::Time::now();
             velocity_command2.header.stamp = ros::Time::now();
-            velocity_command1.twist = pid.computeControl(target_position1, current_position_bar, 1.0 / 50.0);
-            velocity_command2.twist = pid.computeControl(target_position2, current_position_bar, 1.0 / 50.0);
+
+            // Set target velocity
+            geometry_msgs::Vector3 target_velocity = computeParabolicTargetVelocity(10.0); // Veronderstelde totale duur van 10 seconden
+
+            // Using bar_velocity as the current velocity in PID control
+            velocity_command1.twist.linear = pid.computeControl(target_velocity, bar_velocity, dt).linear;
+            velocity_command2.twist.linear = pid.computeControl(target_velocity, bar_velocity, dt).linear;
+
             vel_pub.publish(velocity_command1);
             vel_pub1.publish(velocity_command2);
         }
+
         double roll, pitch;
         tf::Quaternion q(msg->pose.pose.orientation.x,
-                         msg->pose.pose.orientation.y,
-                         msg->pose.pose.orientation.z,
-                         msg->pose.pose.orientation.w);
+                        msg->pose.pose.orientation.y,
+                        msg->pose.pose.orientation.z,
+                        msg->pose.pose.orientation.w);
         tf::Matrix3x3(q).getRPY(roll, pitch, current_yaw);
         current_yaw = normalizeAngle(current_yaw);
     }
@@ -202,9 +264,9 @@ public:
             mid_y = (current_position1.y + current_position2.y) / 2.0;
 
             if (target_yaw_radians > current_yaw) {
-                increment_yaw = 0.25*M_PI; 
-            } else if (target_yaw_radians < current_yaw){
-                increment_yaw = -0.25*M_PI;
+                increment_yaw = 0.25 * M_PI; 
+            } else if (target_yaw_radians < current_yaw) {
+                increment_yaw = -0.25 * M_PI;
             }
             new_target_yaw_radians = current_yaw;
             ROS_INFO("Start Yaw: %f, target yaw: %f, increment: %f", current_yaw, target_yaw_radians, increment_yaw);
@@ -214,12 +276,13 @@ public:
         if (phase == ROTATION) {
             double angle_diff = target_yaw_radians - new_target_yaw_radians;
             ROS_INFO("angle_diff: %f", angle_diff);
-            if (fabs(angle_diff) < 0.25*M_PI) {
+            if (fabs(angle_diff) < 0.25 * M_PI) {
                 new_target_yaw_radians = target_yaw_radians;
                 ROS_INFO("sending final yaw");
                 if (fabs(target_yaw_radians - current_yaw) < 0.1) {
                     ROS_INFO("Switching to TRANSLATION phase");
                     phase = TRANSLATION;
+                    translation_start_time = ros::Time::now();
                 }
             } else {
                 new_target_yaw_radians += increment_yaw;
