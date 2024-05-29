@@ -6,6 +6,10 @@
     <arg name="target_x" default="2.0"/>
     <arg name="target_y" default="2.0"/>
     <arg name="target_z" default="1.0"/>
+    <arg name="increment_time" default="0.5"/>
+    <arg name="increment_degrees" default="30"/>
+    <arg name="etha_yaw" default="0.1"/>
+    <arg name="etha_translation" default="0.1"/>
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
     <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
@@ -21,6 +25,10 @@
             <param name="target_x" value="$(arg target_x)"/>
             <param name="target_y" value="$(arg target_y)"/>
             <param name="target_z" value="$(arg target_z)"/>
+            <param name="increment_time" value="$(arg increment_time)"/>
+            <param name="increment_degrees" value="$(arg increment_degrees)"/>
+            <param name="etha_yaw" value="$(arg etha_yaw)"/>
+            <param name="etha_translation" value="$(arg etha_translation)"/>
         </node>
     </group>
 </launch>
