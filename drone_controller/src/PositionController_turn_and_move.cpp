@@ -42,6 +42,7 @@ private:
     ros::Subscriber odom_sub_falcon1, odom_sub_falcon2, odom_sub_bar;
     ros::Timer timer, initial_position_timer, shutdown_timer;
     bool initial_positions_set;
+    bool flying = true;
     double centerX, centerY, centerZ;
     double startX, startY;
     double target_x, target_y, target_z;
@@ -88,7 +89,7 @@ private:
         tf::Matrix3x3(q).getRPY(roll, pitch, current_yaw);
         double error_yaw = current_yaw - degreesToRadians(end_angle_degrees);
         double error_translation = sqrt(pow(current_position_bar.x - target_x, 2) + pow(current_position_bar.y - target_y, 2));
-        if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation) { // Check if the error is small enough to shut down
+        if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation && flying) { // Check if the error is small enough to shut down
             ROS_INFO("Error yaw: %f, error translation: %f", error_yaw, error_translation);
             ROS_INFO("going to land");  
 
@@ -110,17 +111,20 @@ private:
             ROS_INFO("Sending falcon2 to pose: x=%f, y=%f, z=%f", new_pose_falcon2.pose.position.x, new_pose_falcon2.pose.position.y, new_pose_falcon2.pose.position.z);
             pose_pub_falcon1.publish(new_pose_falcon1);
             pose_pub_falcon2.publish(new_pose_falcon2);
+            ros::Duration(0.1).sleep();
             
-            std_msgs::Empty msg;
+            // std_msgs::Empty msg;
             // land_pub_1.publish(msg);
             // land_pub_2.publish(msg);
-            std::this_thread::sleep_for(std::chrono::seconds(20));
+            // // ros::spin();
+            // flying = false;
+            // std::this_thread::sleep_for(std::chrono::seconds(20));
 
-            off_pub_1.publish(msg);
-            off_pub_2.publish(msg);
-            //ros::spin(); // Ensure the message is processed
+            // off_pub_1.publish(msg);
+            // off_pub_2.publish(msg);
+            // ros::spin(); // Ensure the message is processed
             // ros::Duration(1).sleep();
-            ros::shutdown();
+            // ros::shutdown();
         }
     }
 
