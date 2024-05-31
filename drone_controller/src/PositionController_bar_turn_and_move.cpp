@@ -1,221 +1,224 @@
 #include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "nav_msgs/Odometry.h"
-#include <cmath>
-#include <thread>
-#include <chrono>
+#include "agiros_msgs/Reference.h"
+#include "agiros_msgs/Setpoint.h"
+#include "agiros_msgs/QuadState.h"
+#include "agiros_msgs/Command.h"
+#include "geometry_msgs/Pose.h"
+#include "geometry_msgs/Point.h"
+#include "geometry_msgs/Quaternion.h"
+#include "geometry_msgs/Twist.h"
+#include "std_msgs/Header.h"
 
-#include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "nav_msgs/Odometry.h"
-#include <cmath>
-#include <thread>
-#include <chrono>
-
-class CirclePathController {
+class TrajectoryCreator { // Class to create a trajectory
 public:
-    CirclePathController() : initial_positions_set(false), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0), startZ(1.0),
-                             target_x(2.0), target_y(2.0), target_z(1.0), degree_increment(30.0) {
-        nh = ros::NodeHandle("~");
+    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false) {
+        // Constructor
 
-        if (!nh.getParam("end_angle_degrees", end_angle_degrees)) {
-            ROS_WARN("Could not retrieve 'end_angle_degrees' from the parameter server; defaulting to 90 degrees");
-            end_angle_degrees = 90.0;
-        }
+        // Read parameters
+        ReadParameters();
 
-        nh.getParam("/BEP/Position_turn_and_move_node/target_x", target_x);
-        nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
-        nh.getParam("/BEP/Position_turn_and_move_node/target_z", target_z);
+        // Initialize the Publisher
+        trajectoryPub1 = nh.advertise<agiros_msgs::Reference>("/" + droneID1 + "/agiros_pilot/trajectory", 10);
+        trajectoryPub2 = nh.advertise<agiros_msgs::Reference>("/" + droneID2 + "/agiros_pilot/trajectory", 10);
 
-        //odom_sub_bar = nh.subscribe("/bar/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackBar, this);
-        //odom_sub_flycrane = nh.subscribe("/flycrane/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackflycrane, this);
-        //odom_sub_flycrane1 = nh.subscribe("/flycrane1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackflycrane1, this);
+        // Initialize the Subscriber
+        odometrySub1 = nh.subscribe("/" + droneID1 + "/agiros_pilot/odometry", 10, &TrajectoryCreator::OdometryCallback1, this);
+        odometrySub2 = nh.subscribe("/" + droneID2 + "/agiros_pilot/odometry", 10, &TrajectoryCreator::OdometryCallback2, this);
 
-        pose_pub_flycrane = nh.advertise<geometry_msgs::PoseStamped>("/flycrane/agiros_pilot/go_to_pose", 2);
-        pose_pub_flycrane1 = nh.advertise<geometry_msgs::PoseStamped>("/flycrane1/agiros_pilot/go_to_pose", 2);
-        
+        // Create a pose message
+        geometry_msgs::Pose pose;
+        pose.position.x = targetX;
+        pose.position.y = targetY;
+        pose.position.z = targetZ;
+        pose.orientation.w = 1.0; // Neutral orientation
 
-        timer = nh.createTimer(ros::Duration(0.8), &CirclePathController::updateCallback, this, false, false);
-        
+        // Send the pose to the drone
+        // SendToPose(pose);
+
+        // Send a triangle trajectory
+        SendTriangleTrajectory();
     }
 
 private:
+    double targetX, targetY, targetZ;
+    double targetTime;
+    bool initialPose1Set, initialPose2Set;
+    std::string droneID1, droneID2;
     ros::NodeHandle nh;
-    ros::Publisher pose_pub_flycrane, pose_pub_flycrane1;
-    ros::Subscriber odom_sub_flycrane, odom_sub_flycrane1;
-    ros::Timer timer, initial_position_timer, shutdown_timer;
-    bool initial_positions_set;
-    double centerX, centerY, centerZ;
-    double startX, startY, startZ;
-    double target_x, target_y, target_z;
-    double angle_degrees, start_angle_degrees;
-    double end_angle_degrees;
-    double degree_increment, increment_x, increment_y, increment_z;
-    geometry_msgs::Point initial_position_bar;
+    ros::Publisher trajectoryPub1, trajectoryPub2;
+    ros::Subscriber odometrySub1, odometrySub2;
+    ros::Rate loopRate; // Publish rate (1 Hz)
+    geometry_msgs::Pose currentPose1, currentPose2;
+    geometry_msgs::Pose initialPose1, initialPose2;
 
-    void normalizeEndAngleDegrees() {
-        if (end_angle_degrees > 180.0) {
-            end_angle_degrees -= 360.0;
-        } else if (end_angle_degrees < -180.0) {
-            end_angle_degrees += 360.0;
-        }
+    void ReadParameters() {
+        nh.getParam("targetX", targetX);
+        nh.getParam("targetY", targetY);
+        nh.getParam("targetZ", targetZ);
+        nh.getParam("targetTime", targetTime);
+        nh.getParam("droneID1", droneID1);
+        nh.getParam("droneID2", droneID2);
+
+        ROS_INFO("C++ file launched with target position: (%f, %f, %f)", targetX, targetY, targetZ);
     }
 
-    //void odometryCallbackflycrane(const nav_msgs::Odometry::ConstPtr& msg) {
-      //  if (initial_positions_set==false) {
-        //    initial_position_flycrane = msg->pose.pose.position;
-          //  checkInitialPositionsSet();
-        //}
-    //}
-
-    //void odometryCallbackflycrane1(const nav_msgs::Odometry::ConstPtr& msg) {
-      //  if (initial_positions_set==false) {
-       //     initial_position_flycrane1 = msg->pose.pose.position;
-         //   checkInitialPositionsSet();
-        //}
-    //}
-    void odometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
-        if (initial_positions_set==false) {
-            initial_position_bar = msg->pose.pose.position;
-            checkInitialPositionsSet();
-        }
-    }
-
-    void checkInitialPositionsSet() {
-        if (initial_position_bar.x != 0.0000000) {
-            startX = initial_position_bar.x;
-            startY = initial_position_bar.y;
-            startZ = initial_position_bar.z;
-            start_angle_degrees = initial_position_bar.z;
-            centerX = startX;
-            centerY = startY;
-            normalizeEndAngleDegrees();
-            
-            angle_degrees = start_angle_degrees;
-            if (end_angle_degrees > start_angle_degrees and end_angle_degrees - start_angle_degrees > 180.0) {
-                degree_increment = -30.0;  //bvb van -90 naar 180 graden
-            } else if (end_angle_degrees > start_angle_degrees and end_angle_degrees - start_angle_degrees <= 180.0) {
-                degree_increment = 30.0;    // bvb can 0 naar 90 graden
-            } else if (end_angle_degrees < start_angle_degrees and end_angle_degrees - start_angle_degrees > 180.0) {
-                degree_increment = 30.0;    // bvb van 180 naar -90 graden
-            } else if (end_angle_degrees < start_angle_degrees and end_angle_degrees - start_angle_degrees <= 180.0) {
-                degree_increment = -30.0;   // bvb van 90 naar 0 graden
-            }
-            if (end_angle_degrees-start_angle_degrees == 0.0) {
-                increment_x = target_x - startX;
-                increment_y = target_y - startY;
-                increment_z = target_z - startZ;
-            } else {
-                increment_x = (target_x - startX) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
-                increment_y = (target_y - startY) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
-                increment_z = (target_z - startZ) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
-            }
-
-            initial_positions_set = true;
-            ROS_INFO("Initial info: startX=%f, startY=%f, start angle=%f, start degree increment=%f, start increment x=%f, start increment y=%f", startX, startY, angle_degrees, degree_increment, increment_x, increment_y);
-
-            // Start a one-time timer of 1 second before starting the regular updateCallback
-            initial_position_timer = nh.createTimer(ros::Duration(0.1), &CirclePathController::startRegularTimerCallback, this, true);
-        }
-    }
-
-    void startRegularTimerCallback(const ros::TimerEvent&) {
-        // Start the regular timer after a delay of 1 second
-        timer.start();
-    }
-
-    void updateCallback(const ros::TimerEvent&) {
-        updateDronesPosition();
-        
-        double next_angle = angle_degrees + degree_increment;
-        if (end_angle_degrees > start_angle_degrees) {
-            if (next_angle >= end_angle_degrees) {
-                angle_degrees = end_angle_degrees;
-                ROS_INFO("Reached end angle: %f degrees", angle_degrees);
-                timer.stop(); // Stop the main timer to prevent further update and set a one-time timer to shut down after 10 seconds
-                updateDronesPosition();
-                shutdown_timer = nh.createTimer(ros::Duration(10), [this](const ros::TimerEvent&) {
-                    ROS_INFO("Shutting down after delay.");
-                    ros::shutdown();
-                }, true); // true makes it a one-shot timer
-            } else {
-                angle_degrees = next_angle;
-            }
+    void OdometryCallback1(const agiros_msgs::QuadState::ConstPtr& msg) {
+        if (!initialPose1Set) {
+            initialPose1 = msg->pose;
+            initialPose1Set = true;
         } else {
-            if (next_angle <= end_angle_degrees) {
-                angle_degrees = end_angle_degrees;
-                ROS_INFO("Reached end angle: %f degrees", angle_degrees);
-                timer.stop(); // Stop the main timer to prevent further update and set a one-time timer to shut down after 10 seconds
-                updateDronesPosition();
-                shutdown_timer = nh.createTimer(ros::Duration(10), [this](const ros::TimerEvent&) {
-                    ROS_INFO("Shutting down after delay.");
-                    ros::shutdown();
-                }, true); // true makes it a one-shot timer
-            } else {
-                angle_degrees = next_angle;
-            }
+            currentPose1 = msg->pose;
         }
     }
 
-    void updateDronesPosition() {
-        double radius = 1.0;
-        double angle_rad = degreesToRadians(angle_degrees);
+    void OdometryCallback2(const agiros_msgs::QuadState::ConstPtr& msg) {
+        if (!initialPose2Set) {
+            initialPose2 = msg->pose;
+            initialPose2Set = true;
+        } else {
+            currentPose2 = msg->pose;
+        }
+    }
 
-        // Update `centerX` and `centerY`
-        centerX += increment_x;
-        centerY += increment_y;
-        centerZ += increment_z;
-        if (startX <= target_x and centerX >= target_x) {
-            centerX = target_x;
-        } 
-        if (startX >= target_x and centerX <= target_x) {
-            centerX = target_x;
+
+    void SendToPose(geometry_msgs::Pose pose) {
+        bool sentCommand = false; // Flag to track if the command has been sent
+        while (ros::ok() && !sentCommand) {
+            // Create a Reference message
+            agiros_msgs::Reference referenceMsg;
+
+            // Fill in the header
+            std_msgs::Header header;
+            header.stamp = ros::Time::now();
+            header.frame_id = "world";
+            referenceMsg.header = header;
+
+            // Define waypoints
+            std::vector<agiros_msgs::Setpoint> waypoints;
+
+            // First waypoint
+            agiros_msgs::Setpoint wp1;
+            wp1.state.header = header;
+            wp1.state.t = 0.0;
+            wp1.state.pose = initialPose1;
+            waypoints.push_back(wp1);
+
+            // Second waypoint
+            agiros_msgs::Setpoint wp2;
+            wp2.state.header = header;
+            wp2.state.t = targetTime;
+            wp2.state.pose = pose;
+            waypoints.push_back(wp2);
+
+            // Add waypoints to the Reference message
+            referenceMsg.points = waypoints;
+
+            // Publish the trajectory
+            trajectoryPub1.publish(referenceMsg);
+            ros::spinOnce();
+            loopRate.sleep();
         }
-        if (startY <= target_y and centerY >= target_y) {
-            centerY = target_y;
-        }
-        if (startY >= target_y and centerY <= target_y) {
-            centerY = target_y;
-        }
-        if (startZ <= target_z and centerZ >= target_z) {
-            centerZ = target_z;
-        }
-        if (startZ >= target_z and centerZ <= target_z) {
-        centerZ = target_z;
-        }
-        geometry_msgs::PoseStamped new_pose_flycrane, new_pose_flycrane1;
-        new_pose_flycrane.pose.position.x = centerX + radius * cos(angle_rad);
-        new_pose_flycrane.pose.position.y = centerY + radius * sin(angle_rad);
-        new_pose_flycrane.pose.position.z = centerZ;
-        new_pose_flycrane1.pose.position.x = centerX + radius * cos(angle_rad + M_PI);
-        new_pose_flycrane1.pose.position.y = centerY + radius * sin(angle_rad + M_PI);
-        new_pose_flycrane1.pose.position.z = centerZ;
+    }
+
+    void GenerateTrajectory(geometry_msgs::Pose pose) {
+        // Create a Reference message
+        agiros_msgs::Reference referenceMsg;
+
+        // Fill in the header
+        std_msgs::Header header;
+        header.stamp = ros::Time::now();
+        header.frame_id = "world";
+        referenceMsg.header = header;
+
+        // Define waypoints
+        std::vector<agiros_msgs::Setpoint> waypoints;
+
+        // First waypoint
+        agiros_msgs::Setpoint wp1;
+        wp1.state.header = header;
+        wp1.state.t = 0.0;
+        wp1.state.pose = initialPose1;
+        waypoints.push_back(wp1);
+
+        // Second waypoint
+        agiros_msgs::Setpoint wp2;
+        wp2.state.header = header;
+        wp2.state.t = targetTime;
+        wp2.state.pose = pose;
+        waypoints.push_back(wp2);
+
+        // Add waypoints to the Reference message
+        referenceMsg.points = waypoints;
+
+        // Publish the trajectory
+        trajectoryPub1.publish(referenceMsg);
+        ros::spinOnce();
+        loopRate.sleep();
+
         
-        // Orientation
-        double half_angle_rad = angle_rad / 2;
-        new_pose_flycrane.pose.orientation.z = sin(half_angle_rad);
-        new_pose_flycrane.pose.orientation.w = cos(half_angle_rad);
-        new_pose_flycrane1.pose.orientation.z = sin(half_angle_rad + M_PI);
-        new_pose_flycrane1.pose.orientation.w = cos(half_angle_rad + M_PI);
-
-        pose_pub_flycrane.publish(new_pose_flycrane);
-        pose_pub_flycrane1.publish(new_pose_flycrane1);
-
-        ROS_INFO("Updated angle: %f", angle_degrees);
-        ROS_INFO("Center position: x=%f, y=%f", centerX, centerY);
-        //ROS_INFO("flycrane position: x=%f, y=%f, z=%f", new_pose_flycrane.pose.position.x, new_pose_flycrane.pose.position.y, new_pose_flycrane.pose.position.z);
-        //ROS_INFO("flycrane1 position: x=%f, y=%f, z=%f", new_pose_flycrane1.pose.position.x, new_pose_flycrane1.pose.position.y, new_pose_flycrane1.pose.position.z);
     }
 
-    double degreesToRadians(double degrees) {
-        return degrees * M_PI / 180.0;
+    void SendTriangleTrajectory() {
+        while (ros::ok()) {
+            // Create a Reference message
+            agiros_msgs::Reference referenceMsg;
+
+            // Fill in the header
+            std_msgs::Header header;
+            header.stamp = ros::Time::now();
+            header.frame_id = "world";
+            referenceMsg.header = header;
+
+            // Define waypoints
+            std::vector<agiros_msgs::Setpoint> waypoints;
+
+            // Waypoint 1
+            agiros_msgs::Setpoint wp1;
+            wp1.state.header = header;
+            wp1.state.t = 0.0;
+            wp1.state.pose.position.x = 0.0;
+            wp1.state.pose.position.y = 0.0;
+            wp1.state.pose.position.z = 1.0;
+            wp1.state.pose.orientation.w = 1.0; // Neutral orientation
+            waypoints.push_back(wp1);
+
+            // Waypoint 2
+            agiros_msgs::Setpoint wp2;
+            wp2.state.header = header;
+            wp2.state.t = 5.0; // Time to reach this waypoint
+            wp2.state.pose.position.x = 1.0;
+            wp2.state.pose.position.y = 1.0;
+            wp2.state.pose.position.z = 1.0;
+            wp2.state.pose.orientation.w = 1.0;
+            waypoints.push_back(wp2);
+
+            // Waypoint 3
+            agiros_msgs::Setpoint wp3;
+            wp3.state.header = header;
+            wp3.state.t = targetTime; // Time to reach this waypoint
+            wp3.state.pose.position.x = 2.0;
+            wp3.state.pose.position.y = 0.0;
+            wp3.state.pose.position.z = 1.0;
+            wp3.state.pose.orientation.w = 1.0;
+            waypoints.push_back(wp3);
+
+            // Add waypoints to the Reference message
+            referenceMsg.points = waypoints;
+
+            // Publish the trajectory
+            trajectoryPub1.publish(referenceMsg);
+
+            ros::spinOnce();
+            loopRate.sleep();
+        }
     }
 };
 
-int main(int argc, char **argv) {
-    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait 4 seconds before takeoff
-    ros::init(argc, argv, "circle_path_controller");
-    CirclePathController controller;
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "trajectoryCreator");
+
+    TrajectoryCreator trajectoryCreator;
     ros::spin();
+
     return 0;
 }
