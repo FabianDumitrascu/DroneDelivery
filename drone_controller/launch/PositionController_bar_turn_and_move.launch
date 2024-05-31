@@ -2,12 +2,15 @@
     <!-- Default arguments -->
     <arg name="droneID1" default="falcon1"/>
     <arg name="droneID2" default="falcon2"/>
+    <arg name="barID" default="bar"/>
     <arg name="endAngleDegrees" default="90"/>
     <arg name="targetX" default="2.0"/>
     <arg name="targetY" default="2.0"/>
     <arg name="targetZ" default="1.0"/>
     <arg name="targetYaw" default="0.0"/>
     <arg name="targetTime" default="10.0"/>
+    <arg name="radiusBar" default="0.5"/> 
+
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
     <!-- <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" /> -->
@@ -19,12 +22,14 @@
               output="screen">
             <param name="droneID1" value="$(arg droneID1)"/>
             <param name="droneID2" value="$(arg droneID2)"/>
+            <param name="barID" value="$(arg barID)"/>
             <param name="endAngleDegrees" value="$(arg endAngleDegrees)"/>
             <param name="targetX" value="$(arg targetX)"/>
             <param name="targetY" value="$(arg targetY)"/>
             <param name="targetZ" value="$(arg targetZ)"/>
             <param name="targetYaw" value="$(arg targetYaw)"/>
             <param name="targetTime" value="$(arg targetTime)"/>
+            <param name="radiusBar" value="$(arg radiusBar)"/> 
         </node>
     </group>
 </launch>
