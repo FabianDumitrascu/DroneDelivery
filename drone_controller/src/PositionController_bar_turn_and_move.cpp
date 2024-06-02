@@ -8,13 +8,15 @@
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/Quaternion.h"
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/PoseStamped.h"
 #include "std_msgs/Header.h"
+#include "std_msgs/Empty.h"
 #include <tf/tf.h>
 #include <cmath>
 
 class TrajectoryCreator { // Class to create a trajectory
 public:
-    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false), initialPoseBarSet(false), deltaDistance(0.1){
+    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false), initialPoseBarSet(false), deltaDistance(0.1), landingSequence(false){
         // Constructor
 
         // Read parameters
@@ -23,6 +25,12 @@ public:
         // Initialize the Publisher
         trajectoryPub1 = nh.advertise<agiros_msgs::Reference>("/" + droneID1 + "/agiros_pilot/trajectory", 10);
         trajectoryPub2 = nh.advertise<agiros_msgs::Reference>("/" + droneID2 + "/agiros_pilot/trajectory", 10);
+
+        goToPosePub1 = nh.advertise<geometry_msgs::PoseStamped>("/" + droneID1 + "/agiros_pilot/go_to_pose", 10);
+        goToPosePub2 = nh.advertise<geometry_msgs::PoseStamped>("/" + droneID2 + "/agiros_pilot/go_to_pose", 10);
+
+        forceHoverPub1 = nh.advertise<std_msgs::Empty>("/" + droneID1 + "/agiros_pilot/force_hover", 1, true);
+        forceHoverPub2 = nh.advertise<std_msgs::Empty>("/" + droneID2 + "/agiros_pilot/force_hover", 1, true);
         
 
         std::string subscribeTopic1 = "/" + droneID1 + "/agiros_pilot/odometry";
@@ -43,16 +51,21 @@ public:
             ROS_INFO("Waiting for initial pose to be set, falcon1: %d, falcon2: %d", initialPose1Set, initialPose2Set);
         }
 
-        double currentYaw = GetYawFromQuaternion(currentPose1.orientation);
+        if (!landingSequence) {
+            double currentYaw = GetYawFromQuaternion(currentPose1.orientation);
+            ROS_INFO("Current yaw: %f", currentYaw);
+            geometry_msgs::Pose pose;
+            pose.position.x = targetX;
+            pose.position.y = targetY;
+            pose.position.z = targetZ;
+            pose.orientation = GetQuaternionFromYaw(targetYaw);
+            pose = GeneratePoseFromYawAndPosition(pose, targetYaw);
+            SendToPose(pose);
+        } else {
+            InitiateLandingSequence();
+        }
 
-        ROS_INFO("Current yaw: %f", currentYaw);
-        geometry_msgs::Pose pose;
-        pose.position.x = targetX;
-        pose.position.y = targetY;
-        pose.position.z = targetZ;
-        pose.orientation = GetQuaternionFromYaw(targetYaw);
-        pose = GeneratePoseFromYawAndPosition(pose, targetYaw);
-        SendToPose(pose);
+
 
         // CalculateBarEndpointPositions(currentPoseBar, GetYawFromQuaternion(currentPoseBar.orientation));
 
@@ -71,9 +84,10 @@ private:
     double radiusBar, cableLength, deltaZ, zBias;
     double deltaDistance;
     bool initialPose1Set, initialPose2Set, initialPoseBarSet;
+    bool landingSequence;
     std::string droneID1, droneID2, barID;
     ros::NodeHandle nh;
-    ros::Publisher trajectoryPub1, trajectoryPub2;
+    ros::Publisher trajectoryPub1, trajectoryPub2, forceHoverPub1, forceHoverPub2, goToPosePub1, goToPosePub2;
     ros::Subscriber odometrySub1, odometrySub2, odometrySubBar;
     ros::Rate loopRate; // Publish rate (1 Hz)
     geometry_msgs::Pose currentPose1, currentPose2, currentPoseBar;
@@ -92,6 +106,7 @@ private:
         nh.getParam("cableLength", cableLength);
         nh.getParam("deltaZ", deltaZ);
         nh.getParam("zBias", zBias);
+        nh.getParam("landingSequence", landingSequence);
         targetYaw = DegreesToRadians(targetYaw);
 
 
@@ -128,8 +143,55 @@ private:
         }
     }
 
+
 double calculateDistance(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2) {
     return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) + pow(p1.z - p2.z, 2));
+}
+
+void InitiateLandingSequence() {
+    // Create PoseStamped messages for current pose of both drones
+    geometry_msgs::PoseStamped currentPoseStamped1, currentPoseStamped2;
+    currentPoseStamped1.header.stamp = ros::Time::now();
+    currentPoseStamped1.header.frame_id = "world";
+    currentPoseStamped1.pose = currentPose1;
+    
+    currentPoseStamped2.header.stamp = ros::Time::now();
+    currentPoseStamped2.header.frame_id = "world";
+    currentPoseStamped2.pose = currentPose2;
+
+    currentPoseStamped1.pose.position.z = 0.2 * cableLength + deltaZ;
+    currentPoseStamped2.pose.position.z = 0.2 * cableLength + deltaZ;
+
+    currentPoseStamped1.pose.position.x += 0.5 * cableLength;
+    currentPoseStamped2.pose.position.x -= 0.5 * cableLength;
+
+    currentPoseStamped1.pose.position.y += 0.5 * cableLength;
+    currentPoseStamped2.pose.position.y -= 0.5 * cableLength;
+    
+    std_msgs::Empty emptyMsg;
+    bool commandSent = false;
+
+    while (ros::ok() && !commandSent) {
+        // Publish the current pose of both drones
+        goToPosePub1.publish(currentPoseStamped1);
+        goToPosePub2.publish(currentPoseStamped2);
+
+        // ROS info
+        ROS_INFO("Publishing current pose of drones");
+
+        ros::spinOnce();
+        loopRate.sleep();
+        // Sleep for 1 second
+        ros::Duration(5).sleep();
+
+        // Publish force hover messages
+        forceHoverPub1.publish(emptyMsg);
+        forceHoverPub2.publish(emptyMsg);
+
+        // ROS info
+        ROS_INFO("Publishing force hover messages");
+        commandSent = true;
+    }
 }
 
 void SendToPose(geometry_msgs::Pose pose) {
@@ -141,6 +203,7 @@ void SendToPose(geometry_msgs::Pose pose) {
     geometry_msgs::Pose deltaPose1, deltaPose2;
     deltaPose1 = currentPose1;
     deltaPose2 = currentPose2;
+    double initialZ = (initialPose1.position.z + initialPose2.position.z) / 2;
 
     while (ros::ok() && !sentCommand) {
         // Create a Reference message
@@ -161,6 +224,7 @@ void SendToPose(geometry_msgs::Pose pose) {
         wp1.state.header = header;
         wp1.state.t = 0.0;
         wp1.state.pose = initialPose1;
+        wp1.state.pose.position.z = initialZ;
         waypoints1.push_back(wp1);
 
         // First waypoint right drone
@@ -168,6 +232,7 @@ void SendToPose(geometry_msgs::Pose pose) {
         wp3.state.header = header;
         wp3.state.t = 0.0;
         wp3.state.pose = initialPose2;
+        wp3.state.pose.position.z = initialZ;
         waypoints2.push_back(wp3);
 
         // Calculate the target positions for the left and right drones based on the midpoint of the bar
