@@ -46,13 +46,17 @@ public:
         double currentYaw = GetYawFromQuaternion(currentPose1.orientation);
 
         ROS_INFO("Current yaw: %f", currentYaw);
-
-        geometry_msgs::Quaternion quat = GetQuaternionFromYaw(DegreesToRadians(targetYaw));
         geometry_msgs::Pose pose;
-        pose.position = initialPose1.position;
-        pose.orientation = quat;
+        pose.position.x = targetX;
+        pose.position.y = targetY;
+        pose.position.z = targetZ;
+        pose.orientation = GetQuaternionFromYaw(targetYaw);
+        pose = GeneratePoseFromYawAndPosition(pose, targetYaw);
+        SendToPose(pose);
 
-        CalculateBarEndpointPositions();
+        // CalculateBarEndpointPositions(currentPoseBar, GetYawFromQuaternion(currentPoseBar.orientation));
+
+
         // Send the pose to the drone
         // SendToPose(pose);
 
@@ -64,7 +68,7 @@ private:
     double targetX, targetY, targetZ;
     double targetTime;
     double targetYaw;
-    double radiusBar;
+    double radiusBar, cableLength, deltaZ;
     bool initialPose1Set, initialPose2Set, initialPoseBarSet;
     std::string droneID1, droneID2, barID;
     ros::NodeHandle nh;
@@ -84,6 +88,9 @@ private:
         nh.getParam("targetYaw", targetYaw);
         nh.getParam("barID", barID);
         nh.getParam("radiusBar", radiusBar);
+        nh.getParam("cableLength", cableLength);
+        nh.getParam("deltaZ", deltaZ);
+        targetYaw = DegreesToRadians(targetYaw);
 
         ROS_INFO("C++ file launched with target position: (%f, %f, %f)", targetX, targetY, targetZ);
     }
@@ -91,6 +98,7 @@ private:
     void OdometryCallback1(const nav_msgs::Odometry::ConstPtr& msg) {
         if (!initialPose1Set) {
             initialPose1 = msg->pose.pose;
+            initialPose1.position.z += deltaZ;
             initialPose1Set = true;
         } else {
             currentPose1 = msg->pose.pose;
@@ -100,6 +108,7 @@ private:
     void OdometryCallback2(const nav_msgs::Odometry::ConstPtr& msg) {
         if (!initialPose2Set) {
             initialPose2 = msg->pose.pose;
+            initialPose2.position.z += deltaZ;
             initialPose2Set = true;
         } else {
             currentPose2 = msg->pose.pose;
@@ -121,39 +130,81 @@ private:
         bool sentCommand = false; // Flag to track if the command has been sent
         while (ros::ok() && !sentCommand) {
             // Create a Reference message
-            agiros_msgs::Reference referenceMsg;
+            agiros_msgs::Reference referenceMsg1, referenceMsg2;
 
             // Fill in the header
             std_msgs::Header header;
             header.stamp = ros::Time::now();
             header.frame_id = "world";
-            referenceMsg.header = header;
+            referenceMsg1.header = header;
+            referenceMsg2.header = header;
 
             // Define waypoints
-            std::vector<agiros_msgs::Setpoint> waypoints;
+            std::vector<agiros_msgs::Setpoint> waypoints1, waypoints2;
 
-            // First waypoint
+            // First waypoint left drone
             agiros_msgs::Setpoint wp1;
             wp1.state.header = header;
             wp1.state.t = 0.0;
             wp1.state.pose = initialPose1;
-            waypoints.push_back(wp1);
+            waypoints1.push_back(wp1);
 
             // Second waypoint
             agiros_msgs::Setpoint wp2;
             wp2.state.header = header;
             wp2.state.t = targetTime;
             wp2.state.pose = pose;
-            waypoints.push_back(wp2);
+            waypoints1.push_back(wp2);
 
-            // Add waypoints to the Reference message
-            referenceMsg.points = waypoints;
+            // Calculate the target position for the drone to the right of the bar
+            double targetYawRight = GetYawFromQuaternion(pose.orientation) + M_PI; // 180 degrees to the right
+            double targetXRight = 2 * radiusBar * cos(targetYawRight);
+            double targetYRight = 2 * radiusBar * sin(targetYawRight);
+            geometry_msgs::Pose poseRight;
+            poseRight.orientation = GetQuaternionFromYaw(GetYawFromQuaternion(pose.orientation));
+            poseRight.position.x = targetXRight + pose.position.x;
+            poseRight.position.y = targetYRight + pose.position.y;
+            poseRight.position.z = pose.position.z;
 
-            // Publish the trajectory
-            trajectoryPub1.publish(referenceMsg);
+            // First waypoint right drone
+            agiros_msgs::Setpoint wp3;
+            wp3.state.header = header;
+            wp3.state.t = 0.0;
+            wp3.state.pose = initialPose2;
+            waypoints2.push_back(wp3);
+
+            // Second waypoint
+            agiros_msgs::Setpoint wp4;
+            wp4.state.header = header;
+            wp4.state.t = targetTime;
+            wp4.state.pose = poseRight;
+            waypoints2.push_back(wp4);
+
+            // Add waypoints to the Reference messages
+            referenceMsg1.points = waypoints1;
+            referenceMsg2.points = waypoints2;
+
+            ROS_INFO("Sending right drone to position: (%f, %f, %f)", poseRight.position.x, poseRight.position.y, poseRight.position.z);
+            ROS_INFO("Sending left drone to position: (%f, %f, %f)", pose.position.x, pose.position.y, pose.position.z);
+
+
+            // Publish the trajectories
+            trajectoryPub1.publish(referenceMsg1);
+            trajectoryPub2.publish(referenceMsg2);
             ros::spinOnce();
             loopRate.sleep();
         }
+    }
+
+    geometry_msgs::Pose GeneratePoseFromYawAndPosition(geometry_msgs::Pose position, double yaw) {
+        geometry_msgs::Pose pose;
+        pose.position = position.position;
+        pose.orientation = GetQuaternionFromYaw(yaw);
+        return pose;
+    }
+
+    void GeneratePointFromMidpointBar(geometry_msgs::Pose poseMidpoint, double yawMidpoint) {
+
     }
 
     void GenerateTrajectory(geometry_msgs::Pose pose) {
@@ -198,17 +249,15 @@ private:
         }
     }
 
-    std::vector<geometry_msgs::Pose> CalculateBarEndpointPositions() {  
+    std::vector<geometry_msgs::Pose> CalculateBarEndpointPositions(geometry_msgs::Pose midpointBar, double yawMidpointBar) {  
         std::vector<geometry_msgs::Pose> barEndpoints;
 
-        double currentYawBar = GetYawFromQuaternion(currentPoseBar.orientation);
-
         // Calculate the target position for the drone to the left of the bar
-        double targetYawLeft = currentYawBar + M_PI / 2; // 90 degrees to the left
+        double targetYawLeft = yawMidpointBar + M_PI / 2; // 90 degrees to the left
         double targetXLeft = radiusBar * cos(targetYawLeft);
         double targetYLeft = radiusBar * sin(targetYawLeft);
 
-        double targetYawRight = currentYawBar - M_PI / 2; // 90 degrees to the right
+        double targetYawRight = yawMidpointBar - M_PI / 2; // 90 degrees to the right
         double targetXRight = radiusBar * cos(targetYawRight);
         double targetYRight = radiusBar * sin(targetYawRight);
 
@@ -216,13 +265,16 @@ private:
         ROS_INFO("Target position to the right of the bar: (%f, %f)", targetXRight, targetYRight);
 
         geometry_msgs::Pose poseLeft, poseRight;
-        poseLeft.position.x = targetXLeft;
-        poseLeft.position.y = targetYLeft;
-        poseLeft.position.z = 2.0;
 
-        poseRight.position.x = targetXRight;
-        poseRight.position.y = targetYRight;
-        poseRight.position.z = 2.0;
+        poseLeft.orientation = GetQuaternionFromYaw(yawMidpointBar);
+        poseLeft.position.x = targetXLeft + midpointBar.position.x;
+        poseLeft.position.y = targetYLeft + midpointBar.position.y;
+        poseLeft.position.z = midpointBar.position.z + cableLength;
+
+        poseRight.orientation = GetQuaternionFromYaw(yawMidpointBar);
+        poseRight.position.x = targetXRight + midpointBar.position.x;
+        poseRight.position.y = targetYRight + midpointBar.position.y;
+        poseRight.position.z = midpointBar.position.z + cableLength;
 
         barEndpoints.push_back(poseLeft);
         barEndpoints.push_back(poseRight);

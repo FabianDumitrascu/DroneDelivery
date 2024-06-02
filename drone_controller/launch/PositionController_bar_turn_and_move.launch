@@ -10,6 +10,8 @@
     <arg name="targetYaw" default="0.0"/>
     <arg name="targetTime" default="10.0"/>
     <arg name="radiusBar" default="0.5"/> 
+    <arg name="cableLength" default="1.0"/>
+    <arg name="deltaZ" default="0.2"/> <!-- New argument for deltaZ -->
 
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
@@ -30,6 +32,8 @@
             <param name="targetYaw" value="$(arg targetYaw)"/>
             <param name="targetTime" value="$(arg targetTime)"/>
             <param name="radiusBar" value="$(arg radiusBar)"/> 
+            <param name="cableLength" value="$(arg cableLength)"/>
+            <param name="deltaZ" value="$(arg deltaZ)"/> <!-- New parameter for deltaZ -->
         </node>
     </group>
 </launch>
