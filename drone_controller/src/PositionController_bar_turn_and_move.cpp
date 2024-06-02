@@ -14,7 +14,7 @@
 
 class TrajectoryCreator { // Class to create a trajectory
 public:
-    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false), initialPoseBarSet(false){
+    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false), initialPoseBarSet(false), deltaDistance(0.1){
         // Constructor
 
         // Read parameters
@@ -69,6 +69,7 @@ private:
     double targetTime;
     double targetYaw;
     double radiusBar, cableLength, deltaZ, zBias;
+    double deltaDistance;
     bool initialPose1Set, initialPose2Set, initialPoseBarSet;
     std::string droneID1, droneID2, barID;
     ros::NodeHandle nh;
@@ -127,12 +128,19 @@ private:
         }
     }
 
+double calculateDistance(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2) {
+    return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) + pow(p1.z - p2.z, 2));
+}
 
 void SendToPose(geometry_msgs::Pose pose) {
     bool sentCommand = false; // Flag to track if the command has been sent
 
     // Adjust for CableLength and zBias
     pose.position.z += cableLength + zBias;
+
+    geometry_msgs::Pose deltaPose1, deltaPose2;
+    deltaPose1 = currentPose1;
+    deltaPose2 = currentPose2;
 
     while (ros::ok() && !sentCommand) {
         // Create a Reference message
@@ -203,13 +211,28 @@ void SendToPose(geometry_msgs::Pose pose) {
         ROS_INFO("Sending left drone to position: (%f, %f, %f)", poseLeft.position.x, poseLeft.position.y, poseLeft.position.z);
         ROS_INFO("Sending right drone to position: (%f, %f, %f)", poseRight.position.x, poseRight.position.y, poseRight.position.z);
 
+        // Check if both drones are within deltaDistance of their initial positions
+        double distanceLeft = calculateDistance(deltaPose1.position, poseLeft.position);
+        double distanceRight = calculateDistance(deltaPose2.position, poseRight.position);
+        ROS_INFO("Delta distance: %f", deltaDistance);
+
+        ROS_INFO("Distance left: %f, distance right: %f", distanceLeft, distanceRight);
+        if (distanceLeft >= deltaDistance && distanceRight >= deltaDistance) {
+            sentCommand = true;
+            ROS_INFO("Sent command is set to %d", sentCommand);
+        }
+
         // Publish the trajectories
         trajectoryPub1.publish(referenceMsg1);
         trajectoryPub2.publish(referenceMsg2);
         ros::spinOnce();
         loopRate.sleep();
+
+
     }
 }
+
+
 
 
     geometry_msgs::Pose GeneratePoseFromYawAndPosition(geometry_msgs::Pose position, double yaw) {
