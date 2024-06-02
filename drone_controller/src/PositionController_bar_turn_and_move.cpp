@@ -128,78 +128,89 @@ private:
     }
 
 
-    void SendToPose(geometry_msgs::Pose pose) {
-        bool sentCommand = false; // Flag to track if the command has been sent
+void SendToPose(geometry_msgs::Pose pose) {
+    bool sentCommand = false; // Flag to track if the command has been sent
 
-        // Adjust for CableLength and zBias
-        pose.position.z += cableLength + zBias;
-        while (ros::ok() && !sentCommand) {
-            // Create a Reference message
-            agiros_msgs::Reference referenceMsg1, referenceMsg2;
-            
-            // Fill in the header
-            std_msgs::Header header;
-            header.stamp = ros::Time::now();
-            header.frame_id = "world";
-            referenceMsg1.header = header;
-            referenceMsg2.header = header;
+    // Adjust for CableLength and zBias
+    pose.position.z += cableLength + zBias;
 
-            // Define waypoints
-            std::vector<agiros_msgs::Setpoint> waypoints1, waypoints2;
+    while (ros::ok() && !sentCommand) {
+        // Create a Reference message
+        agiros_msgs::Reference referenceMsg1, referenceMsg2;
+        
+        // Fill in the header
+        std_msgs::Header header;
+        header.stamp = ros::Time::now();
+        header.frame_id = "world";
+        referenceMsg1.header = header;
+        referenceMsg2.header = header;
 
-            // First waypoint left drone
-            agiros_msgs::Setpoint wp1;
-            wp1.state.header = header;
-            wp1.state.t = 0.0;
-            wp1.state.pose = initialPose1;
-            waypoints1.push_back(wp1);
+        // Define waypoints
+        std::vector<agiros_msgs::Setpoint> waypoints1, waypoints2;
 
-            // Second waypoint
-            agiros_msgs::Setpoint wp2;
-            wp2.state.header = header;
-            wp2.state.t = targetTime;
-            wp2.state.pose = pose;
-            waypoints1.push_back(wp2);
+        // First waypoint left drone
+        agiros_msgs::Setpoint wp1;
+        wp1.state.header = header;
+        wp1.state.t = 0.0;
+        wp1.state.pose = initialPose1;
+        waypoints1.push_back(wp1);
 
-            // Calculate the target position for the drone to the right of the bar
-            double targetYawRight = GetYawFromQuaternion(pose.orientation) + M_PI; // 180 degrees to the right
-            double targetXRight = 2 * radiusBar * cos(targetYawRight);
-            double targetYRight = 2 * radiusBar * sin(targetYawRight);
-            geometry_msgs::Pose poseRight;
-            poseRight.orientation = GetQuaternionFromYaw(GetYawFromQuaternion(pose.orientation));
-            poseRight.position.x = targetXRight + pose.position.x;
-            poseRight.position.y = targetYRight + pose.position.y;
-            poseRight.position.z = pose.position.z;
+        // First waypoint right drone
+        agiros_msgs::Setpoint wp3;
+        wp3.state.header = header;
+        wp3.state.t = 0.0;
+        wp3.state.pose = initialPose2;
+        waypoints2.push_back(wp3);
 
-            // First waypoint right drone
-            agiros_msgs::Setpoint wp3;
-            wp3.state.header = header;
-            wp3.state.t = 0.0;
-            wp3.state.pose = initialPose2;
-            waypoints2.push_back(wp3);
+        // Calculate the target positions for the left and right drones based on the midpoint of the bar
+        double targetYaw = GetYawFromQuaternion(pose.orientation);
+        double targetXLeft = radiusBar * cos(targetYaw + M_PI / 2);
+        double targetYLeft = radiusBar * sin(targetYaw + M_PI / 2);
+        double targetXRight = radiusBar * cos(targetYaw - M_PI / 2);
+        double targetYRight = radiusBar * sin(targetYaw - M_PI / 2);
 
-            // Second waypoint
-            agiros_msgs::Setpoint wp4;
-            wp4.state.header = header;
-            wp4.state.t = targetTime;
-            wp4.state.pose = poseRight;
-            waypoints2.push_back(wp4);
+        geometry_msgs::Pose poseLeft, poseRight;
+        poseLeft.orientation = pose.orientation;
+        poseRight.orientation = pose.orientation;
 
-            // Add waypoints to the Reference messages
-            referenceMsg1.points = waypoints1;
-            referenceMsg2.points = waypoints2;
+        // Adjust positions relative to the midpoint (target pose)
+        poseLeft.position.x = pose.position.x + targetXLeft;
+        poseLeft.position.y = pose.position.y + targetYLeft;
+        poseLeft.position.z = pose.position.z;
+        
+        poseRight.position.x = pose.position.x + targetXRight;
+        poseRight.position.y = pose.position.y + targetYRight;
+        poseRight.position.z = pose.position.z;
 
-            ROS_INFO("Sending right drone to position: (%f, %f, %f)", poseRight.position.x, poseRight.position.y, poseRight.position.z);
-            ROS_INFO("Sending left drone to position: (%f, %f, %f)", pose.position.x, pose.position.y, pose.position.z);
+        // Second waypoint left drone
+        agiros_msgs::Setpoint wp2;
+        wp2.state.header = header;
+        wp2.state.t = targetTime;
+        wp2.state.pose = poseLeft;
+        waypoints1.push_back(wp2);
 
+        // Second waypoint right drone
+        agiros_msgs::Setpoint wp4;
+        wp4.state.header = header;
+        wp4.state.t = targetTime;
+        wp4.state.pose = poseRight;
+        waypoints2.push_back(wp4);
 
-            // Publish the trajectories
-            trajectoryPub1.publish(referenceMsg1);
-            trajectoryPub2.publish(referenceMsg2);
-            ros::spinOnce();
-            loopRate.sleep();
-        }
+        // Add waypoints to the Reference messages
+        referenceMsg1.points = waypoints1;
+        referenceMsg2.points = waypoints2;
+
+        ROS_INFO("Sending left drone to position: (%f, %f, %f)", poseLeft.position.x, poseLeft.position.y, poseLeft.position.z);
+        ROS_INFO("Sending right drone to position: (%f, %f, %f)", poseRight.position.x, poseRight.position.y, poseRight.position.z);
+
+        // Publish the trajectories
+        trajectoryPub1.publish(referenceMsg1);
+        trajectoryPub2.publish(referenceMsg2);
+        ros::spinOnce();
+        loopRate.sleep();
     }
+}
+
 
     geometry_msgs::Pose GeneratePoseFromYawAndPosition(geometry_msgs::Pose position, double yaw) {
         geometry_msgs::Pose pose;
