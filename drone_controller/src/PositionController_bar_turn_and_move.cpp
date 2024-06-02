@@ -68,7 +68,7 @@ private:
     double targetX, targetY, targetZ;
     double targetTime;
     double targetYaw;
-    double radiusBar, cableLength, deltaZ;
+    double radiusBar, cableLength, deltaZ, zBias;
     bool initialPose1Set, initialPose2Set, initialPoseBarSet;
     std::string droneID1, droneID2, barID;
     ros::NodeHandle nh;
@@ -90,7 +90,9 @@ private:
         nh.getParam("radiusBar", radiusBar);
         nh.getParam("cableLength", cableLength);
         nh.getParam("deltaZ", deltaZ);
+        nh.getParam("zBias", zBias);
         targetYaw = DegreesToRadians(targetYaw);
+
 
         ROS_INFO("C++ file launched with target position: (%f, %f, %f)", targetX, targetY, targetZ);
     }
@@ -128,10 +130,13 @@ private:
 
     void SendToPose(geometry_msgs::Pose pose) {
         bool sentCommand = false; // Flag to track if the command has been sent
+
+        // Adjust for CableLength and zBias
+        pose.position.z += cableLength + zBias;
         while (ros::ok() && !sentCommand) {
             // Create a Reference message
             agiros_msgs::Reference referenceMsg1, referenceMsg2;
-
+            
             // Fill in the header
             std_msgs::Header header;
             header.stamp = ros::Time::now();

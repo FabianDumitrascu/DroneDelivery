@@ -12,6 +12,7 @@
     <arg name="radiusBar" default="0.5"/> 
     <arg name="cableLength" default="1.0"/>
     <arg name="deltaZ" default="0.2"/> <!-- New argument for deltaZ -->
+    <arg name="zBias" default="0.0"/> <!-- New argument for zBias -->
 
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
@@ -34,6 +35,7 @@
             <param name="radiusBar" value="$(arg radiusBar)"/> 
             <param name="cableLength" value="$(arg cableLength)"/>
             <param name="deltaZ" value="$(arg deltaZ)"/> <!-- New parameter for deltaZ -->
+            <param name="zBias" value="$(arg zBias)"/> <!-- New parameter for zBias -->
         </node>
     </group>
 </launch>
