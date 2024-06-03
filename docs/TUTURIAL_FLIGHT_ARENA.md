@@ -1,4 +1,4 @@
-# The tutorial of how to launch everything for the in the flight arena
+# THÉ tutorial of how to launch everything for the in the flight arena
 
 ## Introduction
 This is a tutorial of how to make everything ready to let a drone fly in the test arena and run your scripts. It is important to know that this tutorial is not complete, nor 100% right. Some things can also be a bit vague or misleading.
