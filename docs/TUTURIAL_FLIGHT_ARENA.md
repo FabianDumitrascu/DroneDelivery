@@ -31,7 +31,7 @@ For the safety precautions, the following examples are the most important:
 1. Wear safety glasses if you are planning to fly
 2. Close black cage curtains (also the one to enter the cage)
 
-For all the safety precautions there is a [https://github.com/cor-mobile-robotics/lab-wiki]
+For all the safety precautions there is a github page: [https://github.com/cor-mobile-robotics/lab-wiki]
 
 ## Setting up WiFi and ID
 First we need to make sure that a connection can be made with the drone. Therefore we need to do the following things:
