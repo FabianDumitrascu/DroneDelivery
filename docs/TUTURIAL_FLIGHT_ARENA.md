@@ -41,10 +41,10 @@ First we need to make sure that a connection can be made with the drone. Therefo
 
 ## Going into Agilicious@raspberrypi
 We need to go into the docker environment of the raspberrypi. This is done by:
-1. We go in the falcon@raspberrypi environment from the agiclean folder with the following code: `ssh falcon@rasberry3` or `ssh falcon@rasberry4`
+1. We go in the falcon@raspberrypi environment from the agiclean folder with the following code: `ssh falcon@raspberry3` or `ssh falcon@raspberry4`
 2. You will need a password, which is: `falcon`
 3. Git clone the desired repository
-4. Go into the docker environment agilicious@rasberrypi by the following code: `agilicious`
+4. Go into the docker environment agilicious@raspberrypi by the following code: `agilicious`
 5. Time to build the catkin from the catkin folder, but by the following code: `catkin build agiros`
 6. Source the `sourceros`
 7. Source your own script here as well
