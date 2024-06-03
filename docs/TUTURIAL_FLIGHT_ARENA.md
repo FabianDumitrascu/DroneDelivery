@@ -59,7 +59,7 @@ We need to go in a docker on our own computer as well. Follow these steps:
 1. You need to go in docker environment
 2. Perform `catkin build` like normal and source it
 3. You can check your laptop ID with: `ifconfig`
-4. Create a `launch_script` file with drone ID and computer ID
+4. Create a `launch_script` file with drone ID and computer ID for each drone and your PC and change the ID for the master and slave as desired
 5. Change the computer ID to the one you found while performing the `ifconfig` command
 6. Source the `launch_script` file 
 
