@@ -205,6 +205,46 @@ void SendToPose(geometry_msgs::Pose pose) {
     deltaPose2 = currentPose2;
     double initialZ = (initialPose1.position.z + initialPose2.position.z) / 2;
 
+    double initialYaw1 = GetYawFromQuaternion(initialPose1.orientation);
+    double initialYaw2 = GetYawFromQuaternion(initialPose2.orientation);
+    double targetYaw = GetYawFromQuaternion(pose.orientation);
+
+    // Calculate the target positions for the left and right drones based on the midpoint of the bar
+    double targetXLeft = radiusBar * cos(targetYaw + M_PI / 2);
+    double targetYLeft = radiusBar * sin(targetYaw + M_PI / 2);
+    double targetXRight = radiusBar * cos(targetYaw - M_PI / 2);
+    double targetYRight = radiusBar * sin(targetYaw - M_PI / 2);
+
+    geometry_msgs::Pose poseLeft, poseRight;
+    poseLeft.orientation = pose.orientation;
+    poseRight.orientation = pose.orientation;
+
+    // Adjust positions relative to the midpoint (target pose)
+    poseLeft.position.x = pose.position.x + targetXLeft;
+    poseLeft.position.y = pose.position.y + targetYLeft;
+    poseLeft.position.z = pose.position.z;
+    
+    poseRight.position.x = pose.position.x + targetXRight;
+    poseRight.position.y = pose.position.y + targetYRight;
+    poseRight.position.z = pose.position.z;
+
+    // Determine which drone should go to which position
+    geometry_msgs::Point pointLeft, pointRight;
+    pointLeft.x = currentPose1.position.x + radiusBar * cos(targetYaw + M_PI / 2);
+    pointLeft.y = currentPose1.position.y + radiusBar * sin(targetYaw + M_PI / 2);
+    pointLeft.z = currentPose1.position.z;
+
+    pointRight.x = currentPose1.position.x + radiusBar * cos(targetYaw - M_PI / 2);
+    pointRight.y = currentPose1.position.y + radiusBar * sin(targetYaw - M_PI / 2);
+    pointRight.z = currentPose1.position.z;
+
+    double dist1ToLeft = calculateDistance(currentPose1.position, pointLeft);
+    double dist1ToRight = calculateDistance(currentPose1.position, pointRight);
+    double dist2ToLeft = calculateDistance(currentPose2.position, pointLeft);
+    double dist2ToRight = calculateDistance(currentPose2.position, pointRight);
+
+    bool isDrone1Left = (dist1ToLeft + dist2ToRight < dist1ToRight + dist2ToLeft);
+
     while (ros::ok() && !sentCommand) {
         // Create a Reference message
         agiros_msgs::Reference referenceMsg1, referenceMsg2;
@@ -235,50 +275,88 @@ void SendToPose(geometry_msgs::Pose pose) {
         wp3.state.pose.position.z = initialZ;
         waypoints2.push_back(wp3);
 
-        // Calculate the target positions for the left and right drones based on the midpoint of the bar
-        double targetYaw = GetYawFromQuaternion(pose.orientation);
-        double targetXLeft = radiusBar * cos(targetYaw + M_PI / 2);
-        double targetYLeft = radiusBar * sin(targetYaw + M_PI / 2);
-        double targetXRight = radiusBar * cos(targetYaw - M_PI / 2);
-        double targetYRight = radiusBar * sin(targetYaw - M_PI / 2);
+        // Assign paths based on relative positions
+        geometry_msgs::Pose targetPose1 = isDrone1Left ? poseLeft : poseRight;
+        geometry_msgs::Pose targetPose2 = isDrone1Left ? poseRight : poseLeft;
 
-        geometry_msgs::Pose poseLeft, poseRight;
-        poseLeft.orientation = pose.orientation;
-        poseRight.orientation = pose.orientation;
+        // Calculate intermediate positions for left drone
+        geometry_msgs::Pose intermediatePose1Left = initialPose1;
+        intermediatePose1Left.position.x += (targetPose1.position.x - initialPose1.position.x) / 3;
+        intermediatePose1Left.position.y += (targetPose1.position.y - initialPose1.position.y) / 3;
+        intermediatePose1Left.position.z += (targetPose1.position.z - initialPose1.position.z) / 3;
+        intermediatePose1Left.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw1, targetYaw, 1.0 / 3.0));
 
-        // Adjust positions relative to the midpoint (target pose)
-        poseLeft.position.x = pose.position.x + targetXLeft;
-        poseLeft.position.y = pose.position.y + targetYLeft;
-        poseLeft.position.z = pose.position.z;
-        
-        poseRight.position.x = pose.position.x + targetXRight;
-        poseRight.position.y = pose.position.y + targetYRight;
-        poseRight.position.z = pose.position.z;
+        geometry_msgs::Pose intermediatePose2Left = initialPose1;
+        intermediatePose2Left.position.x += 2 * (targetPose1.position.x - initialPose1.position.x) / 3;
+        intermediatePose2Left.position.y += 2 * (targetPose1.position.y - initialPose1.position.y) / 3;
+        intermediatePose2Left.position.z += 2 * (targetPose1.position.z - initialPose1.position.z) / 3;
+        intermediatePose2Left.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw1, targetYaw, 2.0 / 3.0));
+
+        // Calculate intermediate positions for right drone
+        geometry_msgs::Pose intermediatePose1Right = initialPose2;
+        intermediatePose1Right.position.x += (targetPose2.position.x - initialPose2.position.x) / 3;
+        intermediatePose1Right.position.y += (targetPose2.position.y - initialPose2.position.y) / 3;
+        intermediatePose1Right.position.z += (targetPose2.position.z - initialPose2.position.z) / 3;
+        intermediatePose1Right.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw2, targetYaw, 1.0 / 3.0));
+
+        geometry_msgs::Pose intermediatePose2Right = initialPose2;
+        intermediatePose2Right.position.x += 2 * (targetPose2.position.x - initialPose2.position.x) / 3;
+        intermediatePose2Right.position.y += 2 * (targetPose2.position.y - initialPose2.position.y) / 3;
+        intermediatePose2Right.position.z += 2 * (targetPose2.position.z - initialPose2.position.z) / 3;
+        intermediatePose2Right.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw2, targetYaw, 2.0 / 3.0));
+
+        // Intermediate waypoint 1 left drone
+        agiros_msgs::Setpoint wpInt1Left;
+        wpInt1Left.state.header = header;
+        wpInt1Left.state.t = targetTime / 3;
+        wpInt1Left.state.pose = intermediatePose1Left;
+        waypoints1.push_back(wpInt1Left);
+
+        // Intermediate waypoint 1 right drone
+        agiros_msgs::Setpoint wpInt1Right;
+        wpInt1Right.state.header = header;
+        wpInt1Right.state.t = targetTime / 3;
+        wpInt1Right.state.pose = intermediatePose1Right;
+        waypoints2.push_back(wpInt1Right);
+
+        // Intermediate waypoint 2 left drone
+        agiros_msgs::Setpoint wpInt2Left;
+        wpInt2Left.state.header = header;
+        wpInt2Left.state.t = 2 * targetTime / 3;
+        wpInt2Left.state.pose = intermediatePose2Left;
+        waypoints1.push_back(wpInt2Left);
+
+        // Intermediate waypoint 2 right drone
+        agiros_msgs::Setpoint wpInt2Right;
+        wpInt2Right.state.header = header;
+        wpInt2Right.state.t = 2 * targetTime / 3;
+        wpInt2Right.state.pose = intermediatePose2Right;
+        waypoints2.push_back(wpInt2Right);
 
         // Second waypoint left drone
         agiros_msgs::Setpoint wp2;
         wp2.state.header = header;
         wp2.state.t = targetTime;
-        wp2.state.pose = poseLeft;
+        wp2.state.pose = targetPose1;
         waypoints1.push_back(wp2);
 
         // Second waypoint right drone
         agiros_msgs::Setpoint wp4;
         wp4.state.header = header;
         wp4.state.t = targetTime;
-        wp4.state.pose = poseRight;
+        wp4.state.pose = targetPose2;
         waypoints2.push_back(wp4);
 
         // Add waypoints to the Reference messages
         referenceMsg1.points = waypoints1;
         referenceMsg2.points = waypoints2;
 
-        ROS_INFO("Sending left drone to position: (%f, %f, %f)", poseLeft.position.x, poseLeft.position.y, poseLeft.position.z);
-        ROS_INFO("Sending right drone to position: (%f, %f, %f)", poseRight.position.x, poseRight.position.y, poseRight.position.z);
+        ROS_INFO("Sending left drone to position: (%f, %f, %f)", targetPose1.position.x, targetPose1.position.y, targetPose1.position.z);
+        ROS_INFO("Sending right drone to position: (%f, %f, %f)", targetPose2.position.x, targetPose2.position.y, targetPose2.position.z);
 
         // Check if both drones are within deltaDistance of their initial positions
-        double distanceLeft = calculateDistance(deltaPose1.position, poseLeft.position);
-        double distanceRight = calculateDistance(deltaPose2.position, poseRight.position);
+        double distanceLeft = calculateDistance(deltaPose1.position, targetPose1.position);
+        double distanceRight = calculateDistance(deltaPose2.position, targetPose2.position);
         ROS_INFO("Delta distance: %f", deltaDistance);
 
         ROS_INFO("Distance left: %f, distance right: %f", distanceLeft, distanceRight);
@@ -292,10 +370,15 @@ void SendToPose(geometry_msgs::Pose pose) {
         trajectoryPub2.publish(referenceMsg2);
         ros::spinOnce();
         loopRate.sleep();
-
-
     }
 }
+
+
+
+double interpolateYaw(double yaw1, double yaw2, double t) {
+    return yaw1 + t * (yaw2 - yaw1);
+}
+
 
 
 
