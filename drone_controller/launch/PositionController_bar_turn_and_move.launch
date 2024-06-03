@@ -13,6 +13,7 @@
     <arg name="cableLength" default="1.0"/>
     <arg name="deltaZ" default="0.2"/> <!-- New argument for deltaZ -->
     <arg name="zBias" default="0.0"/> <!-- New argument for zBias -->
+    <arg name="landingSequence" default="false"/> <!-- New argument for landingSequence -->
 
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
@@ -36,6 +37,7 @@
             <param name="cableLength" value="$(arg cableLength)"/>
             <param name="deltaZ" value="$(arg deltaZ)"/> <!-- New parameter for deltaZ -->
             <param name="zBias" value="$(arg zBias)"/> <!-- New parameter for zBias -->
+            <param name="landingSequence" value="$(arg landingSequence)"/> <!-- New parameter for landingSequence -->
         </node>
     </group>
 </launch>

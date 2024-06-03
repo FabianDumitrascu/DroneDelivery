@@ -31,6 +31,12 @@ public:
 
         forceHoverPub1 = nh.advertise<std_msgs::Empty>("/" + droneID1 + "/agiros_pilot/force_hover", 1, true);
         forceHoverPub2 = nh.advertise<std_msgs::Empty>("/" + droneID2 + "/agiros_pilot/force_hover", 1, true);
+
+        landPub1 = nh.advertise<std_msgs::Empty>("/" + droneID1 + "/agiros_pilot/land", 1, true);
+        landPub2 = nh.advertise<std_msgs::Empty>("/" + droneID2 + "/agiros_pilot/land", 1, true);
+
+        offPub1 = nh.advertise<std_msgs::Empty>("/" + droneID1 + "/agiros_pilot/off", 1, true);
+        offPub2 = nh.advertise<std_msgs::Empty>("/" + droneID2 + "/agiros_pilot/off", 1, true);
         
 
         std::string subscribeTopic1 = "/" + droneID1 + "/agiros_pilot/odometry";
@@ -87,7 +93,7 @@ private:
     bool landingSequence;
     std::string droneID1, droneID2, barID;
     ros::NodeHandle nh;
-    ros::Publisher trajectoryPub1, trajectoryPub2, forceHoverPub1, forceHoverPub2, goToPosePub1, goToPosePub2;
+    ros::Publisher trajectoryPub1, trajectoryPub2, forceHoverPub1, forceHoverPub2, goToPosePub1, goToPosePub2, landPub1, landPub2, offPub1, offPub2;
     ros::Subscriber odometrySub1, odometrySub2, odometrySubBar;
     ros::Rate loopRate; // Publish rate (1 Hz)
     geometry_msgs::Pose currentPose1, currentPose2, currentPoseBar;
@@ -247,6 +253,24 @@ void InitiateLandingSequence() {
         ros::spinOnce();
         loopRate.sleep();
     }
+    ros::spinOnce();
+    ros::Duration(3).sleep();
+
+    std_msgs::Empty emptyMsg;
+
+    landPub1.publish(emptyMsg);
+    landPub2.publish(emptyMsg);
+
+    ros::spinOnce();
+    ros::Duration(3).sleep();
+
+    offPub1.publish(emptyMsg);
+    offPub2.publish(emptyMsg);
+
+    ros::spinOnce();
+    ros::Duration(3).sleep();   
+
+    ROS_INFO("Force hover and landing commands published.");
 }
 
 
