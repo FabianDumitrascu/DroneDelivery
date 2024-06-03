@@ -9,9 +9,8 @@ You will need 3 different terminal screens, so using terminator app is adviced. 
 1. [Safety](#safety)
 2. [Setting up WiFi and ID](#setting-up-wifi-and-id)
 3. [Going into Agilicious@raspberrypi](#going-into-agiliciousraspberrypi)
-4. [Going into Falcon@name](#going-into-falconname)
-5. [Going into Agilicious environment](#going-into-agilicious-environment)
-6. [Random stuff I wrote down but don't know where to put haha](#random-stuff-i-wrote-down-but-dont-know-where-to-put-haha)
+4. [Going into Agilicious environment](#going-into-agilicious-environment)
+5. [Random stuff I wrote down but don't know where to put haha](#random-stuff-i-wrote-down-but-dont-know-where-to-put-haha)
 
 ## Safety
 For using the test arena there are some safety precautions and checklists that need to be taken into account. 
@@ -50,9 +49,6 @@ We need to go into the docker environment of the raspberrypi. This is done by:
 7. Source your own script here as well
 
 NOTE: Specify `quad_name:=falcon3` when launching (or `quad_name1:=falcon4`)
-
-## Going into Falcon@name
-Connection to make or something?
 
 ## Going into Agilicious environment
 We need to go in a docker on our own computer as well. Follow these steps:
