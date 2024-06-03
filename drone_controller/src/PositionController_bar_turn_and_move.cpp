@@ -149,50 +149,107 @@ double calculateDistance(const geometry_msgs::Point& p1, const geometry_msgs::Po
 }
 
 void InitiateLandingSequence() {
-    // Create PoseStamped messages for current pose of both drones
+    bool sentCommand = false; // Flag to track if the command has been sent
+
+    // Capture the initial poses
     geometry_msgs::PoseStamped currentPoseStamped1, currentPoseStamped2;
     currentPoseStamped1.header.stamp = ros::Time::now();
     currentPoseStamped1.header.frame_id = "world";
     currentPoseStamped1.pose = currentPose1;
-    
+
     currentPoseStamped2.header.stamp = ros::Time::now();
     currentPoseStamped2.header.frame_id = "world";
     currentPoseStamped2.pose = currentPose2;
 
-    currentPoseStamped1.pose.position.z = 0.2 * cableLength + deltaZ;
-    currentPoseStamped2.pose.position.z = 0.2 * cableLength + deltaZ;
+    // Create the points for the landing sequence
+    std::vector<geometry_msgs::PoseStamped> landingPoints1, landingPoints2;
 
-    currentPoseStamped1.pose.position.x += 0.5 * cableLength;
-    currentPoseStamped2.pose.position.x -= 0.5 * cableLength;
+    // Add the current point
+    landingPoints1.push_back(currentPoseStamped1);
+    landingPoints2.push_back(currentPoseStamped2);
 
-    currentPoseStamped1.pose.position.y += 0.5 * cableLength;
-    currentPoseStamped2.pose.position.y -= 0.5 * cableLength;
-    
-    std_msgs::Empty emptyMsg;
-    bool commandSent = false;
+    // Add the point with z value 0.5 * cableLength
+    geometry_msgs::PoseStamped halfCableLengthPose1 = currentPoseStamped1;
+    geometry_msgs::PoseStamped halfCableLengthPose2 = currentPoseStamped2;
 
-    while (ros::ok() && !commandSent) {
-        // Publish the current pose of both drones
-        goToPosePub1.publish(currentPoseStamped1);
-        goToPosePub2.publish(currentPoseStamped2);
+    halfCableLengthPose1.pose.position.z = 0.5 * cableLength;
+    halfCableLengthPose2.pose.position.z = 0.5 * cableLength;
 
-        // ROS info
-        ROS_INFO("Publishing current pose of drones");
+    landingPoints1.push_back(halfCableLengthPose1);
+    landingPoints2.push_back(halfCableLengthPose2);
+
+    // Add the point that goes in the forward yaw direction by 0.4 * cableLength
+    double yaw1 = GetYawFromQuaternion(currentPose1.orientation);
+    double yaw2 = GetYawFromQuaternion(currentPose2.orientation);
+
+    geometry_msgs::PoseStamped forwardPose1 = halfCableLengthPose1;
+    geometry_msgs::PoseStamped forwardPose2 = halfCableLengthPose2;
+
+    forwardPose1.pose.position.x += 0.4 * cableLength * cos(yaw1);
+    forwardPose1.pose.position.y += 0.4 * cableLength * sin(yaw1);
+
+    forwardPose2.pose.position.x += 0.4 * cableLength * cos(yaw2);
+    forwardPose2.pose.position.y += 0.4 * cableLength * sin(yaw2);
+
+    landingPoints1.push_back(forwardPose1);
+    landingPoints2.push_back(forwardPose2);
+
+    // Create a Reference message
+    agiros_msgs::Reference referenceMsg1, referenceMsg2;
+
+    // Fill in the header
+    std_msgs::Header header;
+    header.stamp = ros::Time::now();
+    header.frame_id = "world";
+    referenceMsg1.header = header;
+    referenceMsg2.header = header;
+
+    // Convert the landing points to agiros_msgs::Setpoint
+    std::vector<agiros_msgs::Setpoint> waypoints1, waypoints2;
+    size_t numPoints = landingPoints1.size();
+    double timeIncrement = targetTime / numPoints;
+
+    for (size_t i = 0; i < numPoints; ++i) {
+        agiros_msgs::Setpoint wp1, wp2;
+        wp1.state.header = header;
+        wp1.state.t = i * timeIncrement;
+        wp1.state.pose = landingPoints1[i].pose;
+
+        wp2.state.header = header;
+        wp2.state.t = i * timeIncrement;
+        wp2.state.pose = landingPoints2[i].pose;
+
+        waypoints1.push_back(wp1);
+        waypoints2.push_back(wp2);
+    }
+
+    // Add waypoints to the Reference messages
+    referenceMsg1.points = waypoints1;
+    referenceMsg2.points = waypoints2;
+
+    while (ros::ok() && !sentCommand) {
+        // Publish the trajectories
+        trajectoryPub1.publish(referenceMsg1);
+        trajectoryPub2.publish(referenceMsg2);
+
+        ROS_INFO("Landing sequence initiated for both drones.");
+
+        // Check if both drones are within deltaDistance of their initial positions
+        double distanceLeft = calculateDistance(currentPose1.position, forwardPose1.pose.position);
+        double distanceRight = calculateDistance(currentPose2.position, forwardPose2.pose.position);
+        ROS_INFO("Distance left: %f, distance right: %f", distanceLeft, distanceRight);
+
+        if (distanceLeft >= deltaDistance && distanceRight >= deltaDistance) {
+            sentCommand = true;
+            ROS_INFO("Sent command is set to %d", sentCommand);
+        }
 
         ros::spinOnce();
         loopRate.sleep();
-        // Sleep for 1 second
-        ros::Duration(5).sleep();
-
-        // Publish force hover messages
-        forceHoverPub1.publish(emptyMsg);
-        forceHoverPub2.publish(emptyMsg);
-
-        // ROS info
-        ROS_INFO("Publishing force hover messages");
-        commandSent = true;
     }
 }
+
+
 
 void SendToPose(geometry_msgs::Pose pose) {
     bool sentCommand = false; // Flag to track if the command has been sent
