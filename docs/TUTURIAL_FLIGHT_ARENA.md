@@ -61,6 +61,7 @@ We need to go in a docker on our own computer as well. Follow these steps:
 3. You can check your laptop ID with: `ifconfig`
 4. Create a `launch_script` file with drone ID and computer ID
 5. Change the computer ID to the one you found while performing the `ifconfig` command
+6. Source the `launch_script` file 
 
 ## Random stuff I wrote down but don't know where to put haha
 1. We need to tell ROS who is master and who is slave. 1 drone master and 1 drone slave is possible, but so is making the computer the master. But when the computer crashes drones will go to Narnia. For this you can make a file where you define the master and slave and their IDs.
