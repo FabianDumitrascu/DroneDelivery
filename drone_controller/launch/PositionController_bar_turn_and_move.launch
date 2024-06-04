@@ -1,26 +1,43 @@
 <launch>
     <!-- Default arguments -->
-    <arg name="drone_id1" default="flycrane"/>
-    <arg name="drone_id2" default="$(arg drone_id1)1"/>
-    <arg name="end_angle_degrees" default="90"/>
-    <arg name="target_x" default="2.0"/>
-    <arg name="target_y" default="2.0"/>
-    <arg name="target_z" default="1.0"/>
+    <arg name="droneID1" default="falcon1"/>
+    <arg name="droneID2" default="falcon2"/>
+    <arg name="barID" default="bar"/>
+    <arg name="endAngleDegrees" default="90"/>
+    <arg name="targetX" default="2.0"/>
+    <arg name="targetY" default="2.0"/>
+    <arg name="targetZ" default="1.0"/>
+    <arg name="targetYaw" default="0.0"/>
+    <arg name="targetTime" default="10.0"/>
+    <arg name="radiusBar" default="0.5"/> 
+    <arg name="cableLength" default="1.0"/>
+    <arg name="deltaZ" default="0.2"/> <!-- New argument for deltaZ -->
+    <arg name="zBias" default="0.0"/> <!-- New argument for zBias -->
+    <arg name="landingSequence" default="false"/> <!-- New argument for landingSequence -->
+
     <!-- Node for Command-->
     <!-- Include the takeoff launch file -->
-    <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
+    <!-- <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" /> -->
     <!-- After takeoff, initiate the position control -->
     <group ns="BEP">
         <node name="Position_bar_turn_and_move_node"
               pkg="drone_controller"
               type="Position_bar_turn_and_move_node"
               output="screen">
-            <param name="drone_id1" value="$(arg drone_id1)"/>
-            <param name="drone_id2" value="$(arg drone_id2)"/>
-            <param name="end_angle_degrees" value="$(arg end_angle_degrees)"/>
-            <param name="target_x" value="$(arg target_x)"/>
-            <param name="target_y" value="$(arg target_y)"/>
-            <param name="target_z" value="$(arg target_z)"/>
+            <param name="droneID1" value="$(arg droneID1)"/>
+            <param name="droneID2" value="$(arg droneID2)"/>
+            <param name="barID" value="$(arg barID)"/>
+            <param name="endAngleDegrees" value="$(arg endAngleDegrees)"/>
+            <param name="targetX" value="$(arg targetX)"/>
+            <param name="targetY" value="$(arg targetY)"/>
+            <param name="targetZ" value="$(arg targetZ)"/>
+            <param name="targetYaw" value="$(arg targetYaw)"/>
+            <param name="targetTime" value="$(arg targetTime)"/>
+            <param name="radiusBar" value="$(arg radiusBar)"/> 
+            <param name="cableLength" value="$(arg cableLength)"/>
+            <param name="deltaZ" value="$(arg deltaZ)"/> <!-- New parameter for deltaZ -->
+            <param name="zBias" value="$(arg zBias)"/> <!-- New parameter for zBias -->
+            <param name="landingSequence" value="$(arg landingSequence)"/> <!-- New parameter for landingSequence -->
         </node>
     </group>
 </launch>

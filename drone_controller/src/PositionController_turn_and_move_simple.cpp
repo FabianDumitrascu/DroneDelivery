@@ -13,22 +13,22 @@ public:
     CirclePathController() : initial_positions_set(false), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0),
                              target_x(2.0), target_y(2.0), target_z(1.0), degree_increment(30.0), etha_yaw(0.0), etha_translation(0.0) {
         nh = ros::NodeHandle("~");
-
-        nh.getParam("/BEP/Position_turn_and_move_node/target_x", target_x);
-        nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
-        nh.getParam("/BEP/Position_turn_and_move_node/target_z", target_z);
+        std::string drone_id1, drone_id2;
+        nh.getParam("drone_id1", drone_id1);
+        nh.getParam("drone_id2", drone_id2);
+        nh.getParam("/BEP/Position_turn_and_move_simple_node/target_x", target_x);
+        nh.getParam("/BEP/Position_turn_and_move_simple_node/target_y", target_y);
+        nh.getParam("/BEP/Position_turn_and_move_simple_node/target_z", target_z);
         nh.getParam("end_angle_degrees", end_angle_degrees);
         nh.getParam("increment_time", increment_time);
         nh.getParam("increment_degrees", increment_degrees);
         nh.getParam("etha_yaw", etha_yaw);
         nh.getParam("etha_translation", etha_translation);
 
-        odom_sub_bar = nh.subscribe("/bar/odometry_sensor1/odometry", 10, &CirclePathController::odometryCallbackBar, this);
-
-        odom_sub_falcon1 = nh.subscribe("/falcon1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
-        odom_sub_falcon2 = nh.subscribe("/falcon2/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon2, this);
-        pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/falcon1/agiros_pilot/go_to_pose", 2);
-        pose_pub_falcon2 = nh.advertise<geometry_msgs::PoseStamped>("/falcon2/agiros_pilot/go_to_pose", 2);
+        odom_sub_falcon1 = nh.subscribe("/" + drone_id1 + "/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
+        odom_sub_falcon2 = nh.subscribe("/" + drone_id2 + "/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon2, this);
+        pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id1 + "/agiros_pilot/go_to_pose", 2);
+        pose_pub_falcon2 = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id2 + "/agiros_pilot/go_to_pose", 2);
         timer = nh.createTimer(ros::Duration(increment_time), &CirclePathController::updateCallback, this, false, false);
     }
 
@@ -36,7 +36,7 @@ private:
     ros::NodeHandle nh;
     ros::Publisher pose_pub_falcon1, pose_pub_falcon2;
     ros::Publisher land_pub_1, land_pub_2;  // Add these as member variables
-    ros::Subscriber odom_sub_falcon1, odom_sub_falcon2, odom_sub_bar;
+    ros::Subscriber odom_sub_falcon1, odom_sub_falcon2;
     ros::Timer timer, initial_position_timer, shutdown_timer;
     bool initial_positions_set;
     double centerX, centerY, centerZ;
@@ -69,25 +69,6 @@ private:
         if (!initial_positions_set) {
             initial_position_falcon2 = msg->pose.pose.position;
             checkInitialPositionsSet();
-        }
-    }
-
-    void odometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
-        std::lock_guard<std::mutex> lock(data_mutex); // Lock the mutex for data synchronization
-        current_position_bar = msg->pose.pose.position;
-        tf::Quaternion q(msg->pose.pose.orientation.x,
-                         msg->pose.pose.orientation.y,
-                         msg->pose.pose.orientation.z,
-                         msg->pose.pose.orientation.w);
-        tf::Matrix3x3(q).getRPY(roll, pitch, current_yaw);
-
-        double error_yaw, error_translation;
-        error_yaw = current_yaw - degreesToRadians(end_angle_degrees);
-        error_translation = sqrt(pow(current_position_bar.x - target_x, 2) + pow(current_position_bar.y - target_y, 2));
-        if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation) { 
-                ROS_INFO("Error yaw: %f, error translation: %f", error_yaw, error_translation);
-                ROS_INFO("Shutting down the node");
-                ros::shutdown();
         }
     }
 

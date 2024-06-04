@@ -1,221 +1,650 @@
 #include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
+#include "agiros_msgs/Reference.h"
+#include "agiros_msgs/Setpoint.h"
+#include "agiros_msgs/QuadState.h"
+#include "agiros_msgs/Command.h"
 #include "nav_msgs/Odometry.h"
-#include <cmath>
-#include <thread>
-#include <chrono>
-
-#include "ros/ros.h"
+#include "geometry_msgs/Pose.h"
+#include "geometry_msgs/Point.h"
+#include "geometry_msgs/Quaternion.h"
+#include "geometry_msgs/Twist.h"
 #include "geometry_msgs/PoseStamped.h"
-#include "nav_msgs/Odometry.h"
+#include "std_msgs/Header.h"
+#include "std_msgs/Empty.h"
+#include <tf/tf.h>
 #include <cmath>
-#include <thread>
-#include <chrono>
 
-class CirclePathController {
+class TrajectoryCreator { // Class to create a trajectory
 public:
-    CirclePathController() : initial_positions_set(false), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0), startZ(1.0),
-                             target_x(2.0), target_y(2.0), target_z(1.0), degree_increment(30.0) {
-        nh = ros::NodeHandle("~");
+    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false), initialPoseBarSet(false), deltaDistance(0.1), landingSequence(false){
+        // Constructor
 
-        if (!nh.getParam("end_angle_degrees", end_angle_degrees)) {
-            ROS_WARN("Could not retrieve 'end_angle_degrees' from the parameter server; defaulting to 90 degrees");
-            end_angle_degrees = 90.0;
+        // Read parameters
+        ReadParameters();
+
+        // Initialize the Publisher
+        trajectoryPub1 = nh.advertise<agiros_msgs::Reference>("/" + droneID1 + "/agiros_pilot/trajectory", 10);
+        trajectoryPub2 = nh.advertise<agiros_msgs::Reference>("/" + droneID2 + "/agiros_pilot/trajectory", 10);
+
+        goToPosePub1 = nh.advertise<geometry_msgs::PoseStamped>("/" + droneID1 + "/agiros_pilot/go_to_pose", 10);
+        goToPosePub2 = nh.advertise<geometry_msgs::PoseStamped>("/" + droneID2 + "/agiros_pilot/go_to_pose", 10);
+
+        forceHoverPub1 = nh.advertise<std_msgs::Empty>("/" + droneID1 + "/agiros_pilot/force_hover", 1, true);
+        forceHoverPub2 = nh.advertise<std_msgs::Empty>("/" + droneID2 + "/agiros_pilot/force_hover", 1, true);
+
+        landPub1 = nh.advertise<std_msgs::Empty>("/" + droneID1 + "/agiros_pilot/land", 1, true);
+        landPub2 = nh.advertise<std_msgs::Empty>("/" + droneID2 + "/agiros_pilot/land", 1, true);
+
+        offPub1 = nh.advertise<std_msgs::Empty>("/" + droneID1 + "/agiros_pilot/off", 1, true);
+        offPub2 = nh.advertise<std_msgs::Empty>("/" + droneID2 + "/agiros_pilot/off", 1, true);
+        
+
+        std::string subscribeTopic1 = "/" + droneID1 + "/agiros_pilot/odometry";
+        std::string subscribeTopic2 = "/" + droneID2 + "/agiros_pilot/odometry";
+        std::string subscribeTopicBar = "/" + barID + "/odometry_sensor1/odometry";
+
+        // Initialize the Subscriber
+        odometrySub1 = nh.subscribe(subscribeTopic1, 10, &TrajectoryCreator::OdometryCallback1, this);
+        odometrySub2 = nh.subscribe(subscribeTopic2, 10, &TrajectoryCreator::OdometryCallback2, this);
+        odometrySubBar = nh.subscribe(subscribeTopicBar, 10, &TrajectoryCreator::OdometryCallbackBar, this);
+        
+        ROS_INFO("Subscribed to odometry topics: %s, %s", subscribeTopic1.c_str(), subscribeTopic2.c_str());
+
+        // Wait for initial pose to be set
+        while (ros::ok() && !initialPose1Set && !initialPose2Set && !initialPoseBarSet) {
+            ros::spinOnce();
+            loopRate.sleep();
+            ROS_INFO("Waiting for initial pose to be set, falcon1: %d, falcon2: %d", initialPose1Set, initialPose2Set);
         }
 
-        nh.getParam("/BEP/Position_turn_and_move_node/target_x", target_x);
-        nh.getParam("/BEP/Position_turn_and_move_node/target_y", target_y);
-        nh.getParam("/BEP/Position_turn_and_move_node/target_z", target_z);
+        if (!landingSequence) {
+            double currentYaw = GetYawFromQuaternion(currentPose1.orientation);
+            ROS_INFO("Current yaw: %f", currentYaw);
+            geometry_msgs::Pose pose;
+            pose.position.x = targetX;
+            pose.position.y = targetY;
+            pose.position.z = targetZ;
+            pose.orientation = GetQuaternionFromYaw(targetYaw);
+            pose = GeneratePoseFromYawAndPosition(pose, targetYaw);
+            SendToPose(pose);
+        } else {
+            InitiateLandingSequence();
+        }
 
-        //odom_sub_bar = nh.subscribe("/bar/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackBar, this);
-        //odom_sub_flycrane = nh.subscribe("/flycrane/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackflycrane, this);
-        //odom_sub_flycrane1 = nh.subscribe("/flycrane1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackflycrane1, this);
 
-        pose_pub_flycrane = nh.advertise<geometry_msgs::PoseStamped>("/flycrane/agiros_pilot/go_to_pose", 2);
-        pose_pub_flycrane1 = nh.advertise<geometry_msgs::PoseStamped>("/flycrane1/agiros_pilot/go_to_pose", 2);
-        
 
-        timer = nh.createTimer(ros::Duration(0.8), &CirclePathController::updateCallback, this, false, false);
-        
+        // CalculateBarEndpointPositions(currentPoseBar, GetYawFromQuaternion(currentPoseBar.orientation));
+
+
+        // Send the pose to the drone
+        // SendToPose(pose);
+
+        // Send a triangle trajectory
+        // SendTriangleTrajectory();
     }
 
 private:
+    double targetX, targetY, targetZ;
+    double targetTime;
+    double targetYaw;
+    double radiusBar, cableLength, deltaZ, zBias;
+    double deltaDistance;
+    bool initialPose1Set, initialPose2Set, initialPoseBarSet;
+    bool landingSequence;
+    std::string droneID1, droneID2, barID;
     ros::NodeHandle nh;
-    ros::Publisher pose_pub_flycrane, pose_pub_flycrane1;
-    ros::Subscriber odom_sub_flycrane, odom_sub_flycrane1;
-    ros::Timer timer, initial_position_timer, shutdown_timer;
-    bool initial_positions_set;
-    double centerX, centerY, centerZ;
-    double startX, startY, startZ;
-    double target_x, target_y, target_z;
-    double angle_degrees, start_angle_degrees;
-    double end_angle_degrees;
-    double degree_increment, increment_x, increment_y, increment_z;
-    geometry_msgs::Point initial_position_bar;
+    ros::Publisher trajectoryPub1, trajectoryPub2, forceHoverPub1, forceHoverPub2, goToPosePub1, goToPosePub2, landPub1, landPub2, offPub1, offPub2;
+    ros::Subscriber odometrySub1, odometrySub2, odometrySubBar;
+    ros::Rate loopRate; // Publish rate (1 Hz)
+    geometry_msgs::Pose currentPose1, currentPose2, currentPoseBar;
+    geometry_msgs::Pose initialPose1, initialPose2, initialPoseBar;
 
-    void normalizeEndAngleDegrees() {
-        if (end_angle_degrees > 180.0) {
-            end_angle_degrees -= 360.0;
-        } else if (end_angle_degrees < -180.0) {
-            end_angle_degrees += 360.0;
-        }
+    void ReadParameters() {
+        nh.getParam("targetX", targetX);
+        nh.getParam("targetY", targetY);
+        nh.getParam("targetZ", targetZ);
+        nh.getParam("targetTime", targetTime);
+        nh.getParam("droneID1", droneID1);
+        nh.getParam("droneID2", droneID2);
+        nh.getParam("targetYaw", targetYaw);
+        nh.getParam("barID", barID);
+        nh.getParam("radiusBar", radiusBar);
+        nh.getParam("cableLength", cableLength);
+        nh.getParam("deltaZ", deltaZ);
+        nh.getParam("zBias", zBias);
+        nh.getParam("landingSequence", landingSequence);
+        targetYaw = DegreesToRadians(targetYaw);
+
+
+        ROS_INFO("C++ file launched with target position: (%f, %f, %f)", targetX, targetY, targetZ);
     }
 
-    //void odometryCallbackflycrane(const nav_msgs::Odometry::ConstPtr& msg) {
-      //  if (initial_positions_set==false) {
-        //    initial_position_flycrane = msg->pose.pose.position;
-          //  checkInitialPositionsSet();
-        //}
-    //}
-
-    //void odometryCallbackflycrane1(const nav_msgs::Odometry::ConstPtr& msg) {
-      //  if (initial_positions_set==false) {
-       //     initial_position_flycrane1 = msg->pose.pose.position;
-         //   checkInitialPositionsSet();
-        //}
-    //}
-    void odometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
-        if (initial_positions_set==false) {
-            initial_position_bar = msg->pose.pose.position;
-            checkInitialPositionsSet();
-        }
-    }
-
-    void checkInitialPositionsSet() {
-        if (initial_position_bar.x != 0.0000000) {
-            startX = initial_position_bar.x;
-            startY = initial_position_bar.y;
-            startZ = initial_position_bar.z;
-            start_angle_degrees = initial_position_bar.z;
-            centerX = startX;
-            centerY = startY;
-            normalizeEndAngleDegrees();
-            
-            angle_degrees = start_angle_degrees;
-            if (end_angle_degrees > start_angle_degrees and end_angle_degrees - start_angle_degrees > 180.0) {
-                degree_increment = -30.0;  //bvb van -90 naar 180 graden
-            } else if (end_angle_degrees > start_angle_degrees and end_angle_degrees - start_angle_degrees <= 180.0) {
-                degree_increment = 30.0;    // bvb can 0 naar 90 graden
-            } else if (end_angle_degrees < start_angle_degrees and end_angle_degrees - start_angle_degrees > 180.0) {
-                degree_increment = 30.0;    // bvb van 180 naar -90 graden
-            } else if (end_angle_degrees < start_angle_degrees and end_angle_degrees - start_angle_degrees <= 180.0) {
-                degree_increment = -30.0;   // bvb van 90 naar 0 graden
-            }
-            if (end_angle_degrees-start_angle_degrees == 0.0) {
-                increment_x = target_x - startX;
-                increment_y = target_y - startY;
-                increment_z = target_z - startZ;
-            } else {
-                increment_x = (target_x - startX) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
-                increment_y = (target_y - startY) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
-                increment_z = (target_z - startZ) / std::abs((end_angle_degrees-start_angle_degrees) / degree_increment);
-            }
-
-            initial_positions_set = true;
-            ROS_INFO("Initial info: startX=%f, startY=%f, start angle=%f, start degree increment=%f, start increment x=%f, start increment y=%f", startX, startY, angle_degrees, degree_increment, increment_x, increment_y);
-
-            // Start a one-time timer of 1 second before starting the regular updateCallback
-            initial_position_timer = nh.createTimer(ros::Duration(0.1), &CirclePathController::startRegularTimerCallback, this, true);
-        }
-    }
-
-    void startRegularTimerCallback(const ros::TimerEvent&) {
-        // Start the regular timer after a delay of 1 second
-        timer.start();
-    }
-
-    void updateCallback(const ros::TimerEvent&) {
-        updateDronesPosition();
-        
-        double next_angle = angle_degrees + degree_increment;
-        if (end_angle_degrees > start_angle_degrees) {
-            if (next_angle >= end_angle_degrees) {
-                angle_degrees = end_angle_degrees;
-                ROS_INFO("Reached end angle: %f degrees", angle_degrees);
-                timer.stop(); // Stop the main timer to prevent further update and set a one-time timer to shut down after 10 seconds
-                updateDronesPosition();
-                shutdown_timer = nh.createTimer(ros::Duration(10), [this](const ros::TimerEvent&) {
-                    ROS_INFO("Shutting down after delay.");
-                    ros::shutdown();
-                }, true); // true makes it a one-shot timer
-            } else {
-                angle_degrees = next_angle;
-            }
+    void OdometryCallback1(const nav_msgs::Odometry::ConstPtr& msg) {
+        if (!initialPose1Set) {
+            initialPose1 = msg->pose.pose;
+            initialPose1.position.z += deltaZ;
+            initialPose1Set = true;
         } else {
-            if (next_angle <= end_angle_degrees) {
-                angle_degrees = end_angle_degrees;
-                ROS_INFO("Reached end angle: %f degrees", angle_degrees);
-                timer.stop(); // Stop the main timer to prevent further update and set a one-time timer to shut down after 10 seconds
-                updateDronesPosition();
-                shutdown_timer = nh.createTimer(ros::Duration(10), [this](const ros::TimerEvent&) {
-                    ROS_INFO("Shutting down after delay.");
-                    ros::shutdown();
-                }, true); // true makes it a one-shot timer
-            } else {
-                angle_degrees = next_angle;
-            }
+            currentPose1 = msg->pose.pose;
         }
     }
 
-    void updateDronesPosition() {
-        double radius = 1.0;
-        double angle_rad = degreesToRadians(angle_degrees);
+    void OdometryCallback2(const nav_msgs::Odometry::ConstPtr& msg) {
+        if (!initialPose2Set) {
+            initialPose2 = msg->pose.pose;
+            initialPose2.position.z += deltaZ;
+            initialPose2Set = true;
+        } else {
+            currentPose2 = msg->pose.pose;
+        }
+    }
 
-        // Update `centerX` and `centerY`
-        centerX += increment_x;
-        centerY += increment_y;
-        centerZ += increment_z;
-        if (startX <= target_x and centerX >= target_x) {
-            centerX = target_x;
-        } 
-        if (startX >= target_x and centerX <= target_x) {
-            centerX = target_x;
+    void OdometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
+        if (!initialPoseBarSet) {
+            initialPoseBar = msg->pose.pose;
+            initialPoseBarSet = true;
+            ROS_INFO("Initial pose of the bar: (%f, %f, %f)", initialPoseBar.position.x, initialPoseBar.position.y, initialPoseBar.position.z);
+        } else {
+            currentPoseBar = msg->pose.pose;
         }
-        if (startY <= target_y and centerY >= target_y) {
-            centerY = target_y;
+    }
+
+
+double calculateDistance(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2) {
+    return sqrt(pow(p1.x - p2.x, 2) + pow(p1.y - p2.y, 2) + pow(p1.z - p2.z, 2));
+}
+
+void InitiateLandingSequence() {
+    bool sentCommand = false; // Flag to track if the command has been sent
+
+    // Capture the initial poses
+    geometry_msgs::PoseStamped currentPoseStamped1, currentPoseStamped2;
+    currentPoseStamped1.header.stamp = ros::Time::now();
+    currentPoseStamped1.header.frame_id = "world";
+    currentPoseStamped1.pose = currentPose1;
+
+    currentPoseStamped2.header.stamp = ros::Time::now();
+    currentPoseStamped2.header.frame_id = "world";
+    currentPoseStamped2.pose = currentPose2;
+
+    // Create the points for the landing sequence
+    std::vector<geometry_msgs::PoseStamped> landingPoints1, landingPoints2;
+
+    // Add the current point
+    landingPoints1.push_back(currentPoseStamped1);
+    landingPoints2.push_back(currentPoseStamped2);
+
+    // Add the point with z value 0.5 * cableLength
+    geometry_msgs::PoseStamped halfCableLengthPose1 = currentPoseStamped1;
+    geometry_msgs::PoseStamped halfCableLengthPose2 = currentPoseStamped2;
+
+    halfCableLengthPose1.pose.position.z = 0.5 * cableLength;
+    halfCableLengthPose2.pose.position.z = 0.5 * cableLength;
+
+    landingPoints1.push_back(halfCableLengthPose1);
+    landingPoints2.push_back(halfCableLengthPose2);
+
+    // Add the point that goes in the forward yaw direction by 0.4 * cableLength
+    double yaw1 = GetYawFromQuaternion(currentPose1.orientation);
+    double yaw2 = GetYawFromQuaternion(currentPose2.orientation);
+
+    geometry_msgs::PoseStamped forwardPose1 = halfCableLengthPose1;
+    geometry_msgs::PoseStamped forwardPose2 = halfCableLengthPose2;
+
+    forwardPose1.pose.position.x += 0.4 * cableLength * cos(yaw1);
+    forwardPose1.pose.position.y += 0.4 * cableLength * sin(yaw1);
+
+    forwardPose2.pose.position.x += 0.4 * cableLength * cos(yaw2);
+    forwardPose2.pose.position.y += 0.4 * cableLength * sin(yaw2);
+
+    landingPoints1.push_back(forwardPose1);
+    landingPoints2.push_back(forwardPose2);
+
+    // Create a Reference message
+    agiros_msgs::Reference referenceMsg1, referenceMsg2;
+
+    // Fill in the header
+    std_msgs::Header header;
+    header.stamp = ros::Time::now();
+    header.frame_id = "world";
+    referenceMsg1.header = header;
+    referenceMsg2.header = header;
+
+    // Convert the landing points to agiros_msgs::Setpoint
+    std::vector<agiros_msgs::Setpoint> waypoints1, waypoints2;
+    size_t numPoints = landingPoints1.size();
+    double timeIncrement = targetTime / numPoints;
+
+    for (size_t i = 0; i < numPoints; ++i) {
+        agiros_msgs::Setpoint wp1, wp2;
+        wp1.state.header = header;
+        wp1.state.t = i * timeIncrement;
+        wp1.state.pose = landingPoints1[i].pose;
+
+        wp2.state.header = header;
+        wp2.state.t = i * timeIncrement;
+        wp2.state.pose = landingPoints2[i].pose;
+
+        waypoints1.push_back(wp1);
+        waypoints2.push_back(wp2);
+    }
+
+    // Add waypoints to the Reference messages
+    referenceMsg1.points = waypoints1;
+    referenceMsg2.points = waypoints2;
+
+    while (ros::ok() && !sentCommand) {
+        // Publish the trajectories
+        trajectoryPub1.publish(referenceMsg1);
+        trajectoryPub2.publish(referenceMsg2);
+
+        ROS_INFO("Landing sequence initiated for both drones.");
+
+        // Check if both drones are within deltaDistance of their initial positions
+        double distanceLeft = calculateDistance(currentPose1.position, forwardPose1.pose.position);
+        double distanceRight = calculateDistance(currentPose2.position, forwardPose2.pose.position);
+        ROS_INFO("Distance left: %f, distance right: %f", distanceLeft, distanceRight);
+
+        if (distanceLeft >= deltaDistance && distanceRight >= deltaDistance) {
+            sentCommand = true;
+            ROS_INFO("Sent command is set to %d", sentCommand);
         }
-        if (startY >= target_y and centerY <= target_y) {
-            centerY = target_y;
-        }
-        if (startZ <= target_z and centerZ >= target_z) {
-            centerZ = target_z;
-        }
-        if (startZ >= target_z and centerZ <= target_z) {
-        centerZ = target_z;
-        }
-        geometry_msgs::PoseStamped new_pose_flycrane, new_pose_flycrane1;
-        new_pose_flycrane.pose.position.x = centerX + radius * cos(angle_rad);
-        new_pose_flycrane.pose.position.y = centerY + radius * sin(angle_rad);
-        new_pose_flycrane.pose.position.z = centerZ;
-        new_pose_flycrane1.pose.position.x = centerX + radius * cos(angle_rad + M_PI);
-        new_pose_flycrane1.pose.position.y = centerY + radius * sin(angle_rad + M_PI);
-        new_pose_flycrane1.pose.position.z = centerZ;
+
+        ros::spinOnce();
+        loopRate.sleep();
+    }
+    ros::spinOnce();
+    ros::Duration(3).sleep();
+
+    std_msgs::Empty emptyMsg;
+
+    landPub1.publish(emptyMsg);
+    landPub2.publish(emptyMsg);
+
+    ros::spinOnce();
+    ros::Duration(3).sleep();
+
+    offPub1.publish(emptyMsg);
+    offPub2.publish(emptyMsg);
+
+    ros::spinOnce();
+    ros::Duration(3).sleep();   
+
+    ROS_INFO("Force hover and landing commands published.");
+}
+
+
+
+void SendToPose(geometry_msgs::Pose pose) {
+    bool sentCommand = false; // Flag to track if the command has been sent
+
+    // Adjust for CableLength and zBias
+    pose.position.z += cableLength + zBias;
+
+    geometry_msgs::Pose deltaPose1, deltaPose2;
+    deltaPose1 = currentPose1;
+    deltaPose2 = currentPose2;
+    double initialZ = (initialPose1.position.z + initialPose2.position.z) / 2;
+
+    double initialYaw1 = GetYawFromQuaternion(initialPose1.orientation);
+    double initialYaw2 = GetYawFromQuaternion(initialPose2.orientation);
+    double targetYaw = GetYawFromQuaternion(pose.orientation);
+
+    // Calculate the target positions for the left and right drones based on the midpoint of the bar
+    double targetXLeft = radiusBar * cos(targetYaw + M_PI / 2);
+    double targetYLeft = radiusBar * sin(targetYaw + M_PI / 2);
+    double targetXRight = radiusBar * cos(targetYaw - M_PI / 2);
+    double targetYRight = radiusBar * sin(targetYaw - M_PI / 2);
+
+    geometry_msgs::Pose poseLeft, poseRight;
+    poseLeft.orientation = pose.orientation;
+    poseRight.orientation = pose.orientation;
+
+    // Adjust positions relative to the midpoint (target pose)
+    poseLeft.position.x = pose.position.x + targetXLeft;
+    poseLeft.position.y = pose.position.y + targetYLeft;
+    poseLeft.position.z = pose.position.z;
+    
+    poseRight.position.x = pose.position.x + targetXRight;
+    poseRight.position.y = pose.position.y + targetYRight;
+    poseRight.position.z = pose.position.z;
+
+    // Determine which drone should go to which position
+    geometry_msgs::Point pointLeft, pointRight;
+    pointLeft.x = currentPose1.position.x + radiusBar * cos(targetYaw + M_PI / 2);
+    pointLeft.y = currentPose1.position.y + radiusBar * sin(targetYaw + M_PI / 2);
+    pointLeft.z = currentPose1.position.z;
+
+    pointRight.x = currentPose1.position.x + radiusBar * cos(targetYaw - M_PI / 2);
+    pointRight.y = currentPose1.position.y + radiusBar * sin(targetYaw - M_PI / 2);
+    pointRight.z = currentPose1.position.z;
+
+    double dist1ToLeft = calculateDistance(currentPose1.position, pointLeft);
+    double dist1ToRight = calculateDistance(currentPose1.position, pointRight);
+    double dist2ToLeft = calculateDistance(currentPose2.position, pointLeft);
+    double dist2ToRight = calculateDistance(currentPose2.position, pointRight);
+
+    bool isDrone1Left = (dist1ToLeft + dist2ToRight < dist1ToRight + dist2ToLeft);
+
+    while (ros::ok() && !sentCommand) {
+        // Create a Reference message
+        agiros_msgs::Reference referenceMsg1, referenceMsg2;
         
-        // Orientation
-        double half_angle_rad = angle_rad / 2;
-        new_pose_flycrane.pose.orientation.z = sin(half_angle_rad);
-        new_pose_flycrane.pose.orientation.w = cos(half_angle_rad);
-        new_pose_flycrane1.pose.orientation.z = sin(half_angle_rad + M_PI);
-        new_pose_flycrane1.pose.orientation.w = cos(half_angle_rad + M_PI);
+        // Fill in the header
+        std_msgs::Header header;
+        header.stamp = ros::Time::now();
+        header.frame_id = "world";
+        referenceMsg1.header = header;
+        referenceMsg2.header = header;
 
-        pose_pub_flycrane.publish(new_pose_flycrane);
-        pose_pub_flycrane1.publish(new_pose_flycrane1);
+        // Define waypoints
+        std::vector<agiros_msgs::Setpoint> waypoints1, waypoints2;
 
-        ROS_INFO("Updated angle: %f", angle_degrees);
-        ROS_INFO("Center position: x=%f, y=%f", centerX, centerY);
-        //ROS_INFO("flycrane position: x=%f, y=%f, z=%f", new_pose_flycrane.pose.position.x, new_pose_flycrane.pose.position.y, new_pose_flycrane.pose.position.z);
-        //ROS_INFO("flycrane1 position: x=%f, y=%f, z=%f", new_pose_flycrane1.pose.position.x, new_pose_flycrane1.pose.position.y, new_pose_flycrane1.pose.position.z);
+        // First waypoint left drone
+        agiros_msgs::Setpoint wp1;
+        wp1.state.header = header;
+        wp1.state.t = 0.0;
+        wp1.state.pose = initialPose1;
+        wp1.state.pose.position.z = initialZ;
+        waypoints1.push_back(wp1);
+
+        // First waypoint right drone
+        agiros_msgs::Setpoint wp3;
+        wp3.state.header = header;
+        wp3.state.t = 0.0;
+        wp3.state.pose = initialPose2;
+        wp3.state.pose.position.z = initialZ;
+        waypoints2.push_back(wp3);
+
+        // Assign paths based on relative positions
+        geometry_msgs::Pose targetPose1 = isDrone1Left ? poseLeft : poseRight;
+        geometry_msgs::Pose targetPose2 = isDrone1Left ? poseRight : poseLeft;
+
+        // Calculate intermediate positions for left drone
+        geometry_msgs::Pose intermediatePose1Left = initialPose1;
+        intermediatePose1Left.position.x += (targetPose1.position.x - initialPose1.position.x) / 3;
+        intermediatePose1Left.position.y += (targetPose1.position.y - initialPose1.position.y) / 3;
+        intermediatePose1Left.position.z += (targetPose1.position.z - initialPose1.position.z) / 3;
+        intermediatePose1Left.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw1, targetYaw, 1.0 / 3.0));
+
+        geometry_msgs::Pose intermediatePose2Left = initialPose1;
+        intermediatePose2Left.position.x += 2 * (targetPose1.position.x - initialPose1.position.x) / 3;
+        intermediatePose2Left.position.y += 2 * (targetPose1.position.y - initialPose1.position.y) / 3;
+        intermediatePose2Left.position.z += 2 * (targetPose1.position.z - initialPose1.position.z) / 3;
+        intermediatePose2Left.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw1, targetYaw, 2.0 / 3.0));
+
+        // Calculate intermediate positions for right drone
+        geometry_msgs::Pose intermediatePose1Right = initialPose2;
+        intermediatePose1Right.position.x += (targetPose2.position.x - initialPose2.position.x) / 3;
+        intermediatePose1Right.position.y += (targetPose2.position.y - initialPose2.position.y) / 3;
+        intermediatePose1Right.position.z += (targetPose2.position.z - initialPose2.position.z) / 3;
+        intermediatePose1Right.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw2, targetYaw, 1.0 / 3.0));
+
+        geometry_msgs::Pose intermediatePose2Right = initialPose2;
+        intermediatePose2Right.position.x += 2 * (targetPose2.position.x - initialPose2.position.x) / 3;
+        intermediatePose2Right.position.y += 2 * (targetPose2.position.y - initialPose2.position.y) / 3;
+        intermediatePose2Right.position.z += 2 * (targetPose2.position.z - initialPose2.position.z) / 3;
+        intermediatePose2Right.orientation = GetQuaternionFromYaw(interpolateYaw(initialYaw2, targetYaw, 2.0 / 3.0));
+
+        // Intermediate waypoint 1 left drone
+        agiros_msgs::Setpoint wpInt1Left;
+        wpInt1Left.state.header = header;
+        wpInt1Left.state.t = targetTime / 3;
+        wpInt1Left.state.pose = intermediatePose1Left;
+        waypoints1.push_back(wpInt1Left);
+
+        // Intermediate waypoint 1 right drone
+        agiros_msgs::Setpoint wpInt1Right;
+        wpInt1Right.state.header = header;
+        wpInt1Right.state.t = targetTime / 3;
+        wpInt1Right.state.pose = intermediatePose1Right;
+        waypoints2.push_back(wpInt1Right);
+
+        // Intermediate waypoint 2 left drone
+        agiros_msgs::Setpoint wpInt2Left;
+        wpInt2Left.state.header = header;
+        wpInt2Left.state.t = 2 * targetTime / 3;
+        wpInt2Left.state.pose = intermediatePose2Left;
+        waypoints1.push_back(wpInt2Left);
+
+        // Intermediate waypoint 2 right drone
+        agiros_msgs::Setpoint wpInt2Right;
+        wpInt2Right.state.header = header;
+        wpInt2Right.state.t = 2 * targetTime / 3;
+        wpInt2Right.state.pose = intermediatePose2Right;
+        waypoints2.push_back(wpInt2Right);
+
+        // Second waypoint left drone
+        agiros_msgs::Setpoint wp2;
+        wp2.state.header = header;
+        wp2.state.t = targetTime;
+        wp2.state.pose = targetPose1;
+        waypoints1.push_back(wp2);
+
+        // Second waypoint right drone
+        agiros_msgs::Setpoint wp4;
+        wp4.state.header = header;
+        wp4.state.t = targetTime;
+        wp4.state.pose = targetPose2;
+        waypoints2.push_back(wp4);
+
+        // Add waypoints to the Reference messages
+        referenceMsg1.points = waypoints1;
+        referenceMsg2.points = waypoints2;
+
+        ROS_INFO("Sending left drone to position: (%f, %f, %f)", targetPose1.position.x, targetPose1.position.y, targetPose1.position.z);
+        ROS_INFO("Sending right drone to position: (%f, %f, %f)", targetPose2.position.x, targetPose2.position.y, targetPose2.position.z);
+
+        // Check if both drones are within deltaDistance of their initial positions
+        double distanceLeft = calculateDistance(deltaPose1.position, targetPose1.position);
+        double distanceRight = calculateDistance(deltaPose2.position, targetPose2.position);
+        ROS_INFO("Delta distance: %f", deltaDistance);
+
+        ROS_INFO("Distance left: %f, distance right: %f", distanceLeft, distanceRight);
+        if (distanceLeft >= deltaDistance && distanceRight >= deltaDistance) {
+            sentCommand = true;
+            ROS_INFO("Sent command is set to %d", sentCommand);
+        }
+
+        // Publish the trajectories
+        trajectoryPub1.publish(referenceMsg1);
+        trajectoryPub2.publish(referenceMsg2);
+        ros::spinOnce();
+        loopRate.sleep();
+    }
+}
+
+
+
+double interpolateYaw(double yaw1, double yaw2, double t) {
+    return yaw1 + t * (yaw2 - yaw1);
+}
+
+
+
+
+
+    geometry_msgs::Pose GeneratePoseFromYawAndPosition(geometry_msgs::Pose position, double yaw) {
+        geometry_msgs::Pose pose;
+        pose.position = position.position;
+        pose.orientation = GetQuaternionFromYaw(yaw);
+        return pose;
     }
 
-    double degreesToRadians(double degrees) {
+    void GeneratePointFromMidpointBar(geometry_msgs::Pose poseMidpoint, double yawMidpoint) {
+
+    }
+
+    void GenerateTrajectory(geometry_msgs::Pose pose) {
+        while (ros::ok()) {
+            // Create a Reference message
+            agiros_msgs::Reference referenceMsg1, referenceMsg2;
+
+
+            // Fill in the header
+            std_msgs::Header header;
+            header.stamp = ros::Time::now();
+            header.frame_id = "world";
+            referenceMsg1.header = header;
+            referenceMsg2.header = header;
+
+            // Define waypoints
+            std::vector<agiros_msgs::Setpoint> waypoints1, waypoints2;
+
+            // Get the bar endpoints
+
+            // First waypoint left drone
+            agiros_msgs::Setpoint wp1;
+            wp1.state.header = header;
+            wp1.state.t = 0.0;
+            wp1.state.pose = initialPose1;
+            waypoints1.push_back(wp1);
+
+            // Second waypoint
+            agiros_msgs::Setpoint wp2;
+            wp2.state.header = header;
+            wp2.state.t = targetTime;
+            wp2.state.pose = pose;
+            waypoints1.push_back(wp2);
+
+            // Add waypoints to the Reference message
+            referenceMsg1.points = waypoints1;
+
+            // Publish the trajectory
+            trajectoryPub1.publish(referenceMsg1);
+            ros::spinOnce();
+            loopRate.sleep();
+        }
+    }
+
+    std::vector<geometry_msgs::Pose> CalculateBarEndpointPositions(geometry_msgs::Pose midpointBar, double yawMidpointBar) {  
+        std::vector<geometry_msgs::Pose> barEndpoints;
+
+        // Calculate the target position for the drone to the left of the bar
+        double targetYawLeft = yawMidpointBar + M_PI / 2; // 90 degrees to the left
+        double targetXLeft = radiusBar * cos(targetYawLeft);
+        double targetYLeft = radiusBar * sin(targetYawLeft);
+
+        double targetYawRight = yawMidpointBar - M_PI / 2; // 90 degrees to the right
+        double targetXRight = radiusBar * cos(targetYawRight);
+        double targetYRight = radiusBar * sin(targetYawRight);
+
+        ROS_INFO("Target position to the left of the bar: (%f, %f)", targetXLeft, targetYLeft);
+        ROS_INFO("Target position to the right of the bar: (%f, %f)", targetXRight, targetYRight);
+
+        geometry_msgs::Pose poseLeft, poseRight;
+
+        poseLeft.orientation = GetQuaternionFromYaw(yawMidpointBar);
+        poseLeft.position.x = targetXLeft + midpointBar.position.x;
+        poseLeft.position.y = targetYLeft + midpointBar.position.y;
+        poseLeft.position.z = midpointBar.position.z + cableLength;
+
+        poseRight.orientation = GetQuaternionFromYaw(yawMidpointBar);
+        poseRight.position.x = targetXRight + midpointBar.position.x;
+        poseRight.position.y = targetYRight + midpointBar.position.y;
+        poseRight.position.z = midpointBar.position.z + cableLength;
+
+        barEndpoints.push_back(poseLeft);
+        barEndpoints.push_back(poseRight);
+
+        return barEndpoints;
+
+
+    }
+
+    void SendTriangleTrajectory() {
+        while (ros::ok()) {
+            // Create a Reference message
+            agiros_msgs::Reference referenceMsg;
+
+            // Fill in the header
+            std_msgs::Header header;
+            header.stamp = ros::Time::now();
+            header.frame_id = "world";
+            referenceMsg.header = header;
+
+            // Define waypoints
+            std::vector<agiros_msgs::Setpoint> waypoints;
+
+            // Waypoint 1
+            agiros_msgs::Setpoint wp1;
+            wp1.state.header = header;
+            wp1.state.t = 0.0;
+            wp1.state.pose.position.x = 0.0;
+            wp1.state.pose.position.y = 0.0;
+            wp1.state.pose.position.z = 1.0;
+            wp1.state.pose.orientation.w = 1.0; // Neutral orientation
+            waypoints.push_back(wp1);
+
+            // Waypoint 2
+            agiros_msgs::Setpoint wp2;
+            wp2.state.header = header;
+            wp2.state.t = 5.0; // Time to reach this waypoint
+            wp2.state.pose.position.x = 1.0;
+            wp2.state.pose.position.y = 1.0;
+            wp2.state.pose.position.z = 1.0;
+            wp2.state.pose.orientation.w = 1.0;
+            waypoints.push_back(wp2);
+
+            // Waypoint 3
+            agiros_msgs::Setpoint wp3;
+            wp3.state.header = header;
+            wp3.state.t = targetTime; // Time to reach this waypoint
+            wp3.state.pose.position.x = 2.0;
+            wp3.state.pose.position.y = 0.0;
+            wp3.state.pose.position.z = 1.0;
+            wp3.state.pose.orientation.w = 1.0;
+            waypoints.push_back(wp3);
+
+            // Add waypoints to the Reference message
+            referenceMsg.points = waypoints;
+
+            // Publish the trajectory
+            trajectoryPub1.publish(referenceMsg);
+
+            ros::spinOnce();
+            loopRate.sleep();
+        }
+    }
+
+    void CalculateMidpoint() {
+        geometry_msgs::Pose midpoint;
+        midpoint.position.x = (initialPose1.position.x + initialPose2.position.x) / 2;
+        midpoint.position.y = (initialPose1.position.y + initialPose2.position.y) / 2;
+        midpoint.position.z = (initialPose1.position.z + initialPose2.position.z) / 2;
+        midpoint.orientation.w = 1.0;
+
+        GenerateTrajectory(midpoint);
+    
+    }
+
+    // Function to extract yaw from a geometry_msgs::Quaternion
+    double GetYawFromQuaternion(const geometry_msgs::Quaternion& quat) {
+        tf::Quaternion q(quat.x, quat.y, quat.z, quat.w);
+        double roll, pitch, yaw;
+        tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+        return yaw;
+    }
+
+    // Function to create a geometry_msgs::Quaternion from a yaw angle
+    geometry_msgs::Quaternion GetQuaternionFromYaw(double yaw) {
+        tf::Quaternion q;
+        q.setRPY(0, 0, yaw); // Roll and pitch are set to zero
+        geometry_msgs::Quaternion quat_msg;
+        tf::quaternionTFToMsg(q, quat_msg);
+        return quat_msg;
+    }
+
+    double DegreesToRadians(double degrees) {
         return degrees * M_PI / 180.0;
     }
 };
 
-int main(int argc, char **argv) {
-    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wait 4 seconds before takeoff
-    ros::init(argc, argv, "circle_path_controller");
-    CirclePathController controller;
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "trajectoryCreator");
+
+    TrajectoryCreator trajectoryCreator;
     ros::spin();
+
     return 0;
 }
