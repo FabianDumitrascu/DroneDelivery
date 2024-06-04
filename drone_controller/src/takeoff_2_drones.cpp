@@ -45,15 +45,15 @@ int main(int argc, char** argv) {
     ROS_INFO("Enable command sent to both drones.");
     
     // Sleep to ensure the messages have time to be sent
-    ros::Duration(1).sleep();
+    ros::Duration(6).sleep();
 
     // Publish the force hover command
-    force_hover_pub_1.publish(empty_msg);
-    force_hover_pub_2.publish(empty_msg);
-    ROS_INFO("Force hover command sent to both drones.");
+    // force_hover_pub_1.publish(empty_msg);
+    // force_hover_pub_2.publish(empty_msg);
+    // ROS_INFO("Force hover command sent to both drones.");
     
     // Sleep to ensure the messages have time to be sent
-    ros::Duration(1).sleep();
+    // ros::Duration(0.1).sleep();
 
     // Publish the start command
     start_pub_1.publish(empty_msg);

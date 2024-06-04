@@ -15,9 +15,9 @@
     <!-- <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" /> -->
     <!-- After takeoff, initiate the position control -->
     <group ns="BEP">
-        <node name="Position_turn_and_move_node"
+        <node name="Position_turn_and_move_simple_node"
               pkg="drone_controller"
-              type="Position_turn_and_move_node"
+              type="Position_turn_and_move_simple_node"
               output="screen">
             <param name="drone_id1" value="$(arg drone_id1)"/>
             <param name="drone_id2" value="$(arg drone_id2)"/>

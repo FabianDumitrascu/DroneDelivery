@@ -1,7 +1,7 @@
 <launch>
     <!-- Default arguments -->
-    <arg name="drone_name_1" default="falcon1"/>
-    <arg name="drone_name_2" default="falcon2"/>
+    <arg name="drone_name_1" default="falcon2"/>
+    <arg name="drone_name_2" default="falcon3"/>
 
     <!-- Node forTakeoff-->
     <group ns = "BEP">

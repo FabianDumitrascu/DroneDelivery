@@ -40,6 +40,7 @@ target_link_libraries(command_node ${catkin_LIBRARIES})
 add_executable(Position_move_node src/PositionController_move.cpp)
 target_link_libraries(Position_move_node ${catkin_LIBRARIES})
 
+
 # Command 2 drones velocity controller Node
 add_executable(command_node_2_pos src/VelocityController_2_drones.cpp)
 target_link_libraries(command_node_2_pos ${catkin_LIBRARIES})
@@ -51,6 +52,10 @@ target_link_libraries(Position_turn_node ${catkin_LIBRARIES})
 # Command 2 drones position controller Turn and Move Node
 add_executable(Position_turn_and_move_node src/PositionController_turn_and_move.cpp)
 target_link_libraries(Position_turn_and_move_node ${catkin_LIBRARIES})
+
+# Command 2 drones position controller Turn and Move simple Node
+add_executable(Position_turn_and_move_simple_node src/PositionController_turn_and_move_simple.cpp)
+target_link_libraries(Position_turn_and_move_simple_node ${catkin_LIBRARIES})
 
 # Command 2 drones position controller bar Turn and Move Node
 add_executable(Position_bar_turn_and_move_node src/PositionController_bar_turn_and_move.cpp)
