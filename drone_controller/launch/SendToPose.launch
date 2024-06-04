@@ -1,0 +1,16 @@
+<launch>
+    <!-- Default arguments -->
+    <arg name="droneID1" default="falcon2"/>
+    <arg name="droneID2" default="falcon3"/>
+
+    <!-- Node forTakeoff-->
+    <group ns = "BEP">
+        <node name="SendToPose"
+            pkg="drone_controller"
+            type="SendToPose_node"
+            output="screen">
+            <param name="drone_name_1" value="$(arg droneID1)" />
+            <param name="drone_name_2" value="$(arg droneID2)" />
+        </node>
+    </group>
+</launch>
