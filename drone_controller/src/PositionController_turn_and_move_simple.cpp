@@ -13,7 +13,9 @@ public:
     CirclePathController() : initial_positions_set(false), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0),
                              target_x(2.0), target_y(2.0), target_z(1.0), degree_increment(30.0), etha_yaw(0.0), etha_translation(0.0) {
         nh = ros::NodeHandle("~");
-
+        std::string drone_id1, drone_id2;
+        nh.getParam("drone_id1", drone_id1);
+        nh.getParam("drone_id2", drone_id2);
         nh.getParam("/BEP/Position_turn_and_move_simple_node/target_x", target_x);
         nh.getParam("/BEP/Position_turn_and_move_simple_node/target_y", target_y);
         nh.getParam("/BEP/Position_turn_and_move_simple_node/target_z", target_z);
@@ -23,10 +25,10 @@ public:
         nh.getParam("etha_yaw", etha_yaw);
         nh.getParam("etha_translation", etha_translation);
 
-        odom_sub_falcon1 = nh.subscribe("/falcon1/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
-        odom_sub_falcon2 = nh.subscribe("/falcon2/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon2, this);
-        pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/falcon1/agiros_pilot/go_to_pose", 2);
-        pose_pub_falcon2 = nh.advertise<geometry_msgs::PoseStamped>("/falcon2/agiros_pilot/go_to_pose", 2);
+        odom_sub_falcon1 = nh.subscribe("/" + drone_id1 + "/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
+        odom_sub_falcon2 = nh.subscribe("/" + drone_id2 + "/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon2, this);
+        pose_pub_falcon1 = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id1 + "/agiros_pilot/go_to_pose", 2);
+        pose_pub_falcon2 = nh.advertise<geometry_msgs::PoseStamped>("/" + drone_id2 + "/agiros_pilot/go_to_pose", 2);
         timer = nh.createTimer(ros::Duration(increment_time), &CirclePathController::updateCallback, this, false, false);
     }
 
