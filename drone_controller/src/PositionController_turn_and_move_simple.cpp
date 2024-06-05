@@ -11,14 +11,14 @@
 class CirclePathController {
 public:
     CirclePathController() : initial_positions_set(false), centerX(0.0), centerY(0.0), centerZ(1.0), startX(0.0), startY(0.0),
-                             target_x(2.0), target_y(2.0), target_z(1.0), degree_increment(30.0), etha_yaw(0.0), etha_translation(0.0) {
+                             target_x(0.0), target_y(0.0), target_z(1.0), degree_increment(30.0), etha_yaw(0.0), etha_translation(0.0) {
         nh = ros::NodeHandle("~");
         std::string drone_id1, drone_id2;
         nh.getParam("drone_id1", drone_id1);
         nh.getParam("drone_id2", drone_id2);
-        nh.getParam("/BEP/Position_turn_and_move_simple_node/target_x", target_x);
-        nh.getParam("/BEP/Position_turn_and_move_simple_node/target_y", target_y);
-        nh.getParam("/BEP/Position_turn_and_move_simple_node/target_z", target_z);
+        nh.getParam("target_x", target_x);
+        nh.getParam("target_y", target_y);
+        nh.getParam("target_z", target_z);
         nh.getParam("end_angle_degrees", end_angle_degrees);
         nh.getParam("increment_time", increment_time);
         nh.getParam("increment_degrees", increment_degrees);
@@ -50,12 +50,13 @@ private:
     geometry_msgs::Point initial_position_falcon1, initial_position_falcon2, current_position_bar;
     std::mutex data_mutex; // Mutex for synchronizing data access
 
-    void normalizeEndAngleDegrees() {
-        if (end_angle_degrees > 180.0) {
-            end_angle_degrees -= 360.0;
-        } else if (end_angle_degrees < -180.0) {
-            end_angle_degrees += 360.0;
+    double normalizeEndAngleDegrees(double angle) {
+        if (angle > 180.0) {
+            angle -= 360.0;
+        } else if (angle < -180.0) {
+            angle += 360.0;
         }
+        return angle;
     }
 
     void odometryCallbackFalcon1(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -80,7 +81,7 @@ private:
             double dy = initial_position_falcon1.y - startY;
             centerX = startX;
             centerY = startY;
-            normalizeEndAngleDegrees();
+            end_angle_degrees = normalizeEndAngleDegrees(end_angle_degrees);
             start_angle_degrees = atan2(dy, dx) * 180.0 / M_PI; // Deze is sowieso tussen -180 en 180 
             angle_degrees = start_angle_degrees;
             if (end_angle_degrees > start_angle_degrees && end_angle_degrees - start_angle_degrees > 180.0) {
@@ -113,7 +114,7 @@ private:
     }
 
     void updateCallback(const ros::TimerEvent&) {
-        double next_angle = angle_degrees + degree_increment;
+        double next_angle = normalizeEndAngleDegrees(angle_degrees + degree_increment);
 
         if (end_angle_degrees > start_angle_degrees) {
             if (next_angle >= end_angle_degrees) {
@@ -139,7 +140,7 @@ private:
     }
 
     void updateDronesPosition() {
-        double radius = 0.5;
+        double radius = 1;
         double angle_rad = degreesToRadians(angle_degrees);
         centerX += increment_x;
         centerY += increment_y;
@@ -167,11 +168,11 @@ private:
         new_pose_falcon2.pose.position.z = centerZ + 1.0;
         
         // Orientation
-        double half_angle_rad = angle_rad / 2;
-        new_pose_falcon1.pose.orientation.z = sin(half_angle_rad);
-        new_pose_falcon1.pose.orientation.w = cos(half_angle_rad);
-        new_pose_falcon2.pose.orientation.z = sin(half_angle_rad + M_PI);
-        new_pose_falcon2.pose.orientation.w = cos(half_angle_rad + M_PI);
+        // double half_angle_rad = angle_rad / 2;
+        // new_pose_falcon1.pose.orientation.z = sin(half_angle_rad);
+        // new_pose_falcon1.pose.orientation.w = cos(half_angle_rad);
+        // new_pose_falcon2.pose.orientation.z = sin(half_angle_rad + M_PI);
+        // new_pose_falcon2.pose.orientation.w = cos(half_angle_rad + M_PI);
 
         pose_pub_falcon1.publish(new_pose_falcon1);
         pose_pub_falcon2.publish(new_pose_falcon2);

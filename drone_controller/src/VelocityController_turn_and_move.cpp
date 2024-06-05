@@ -57,10 +57,6 @@ public:
     }
 };
 
-double getYawFromQuaternion(double x, double y, double z, double w) {
-    return atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z));
-}
-
 class DroneController {
 private:
     ros::NodeHandle nh;
@@ -85,58 +81,69 @@ private:
     double Mid_yaw_end_normalized_degrees;
     double Mid_yaw_end;
     double radius = 1.0;
+    double Kp, Ki, Kd;
+    double startX, startY;
+    double centerX, centerY;
+    bool initialYawFound;
+    geometry_msgs::Point initial_position_falcon1;
+    geometry_msgs::Point initial_position_falcon2;
     ros::Timer update_timer, shutdown_timer;
 
 public:
-    DroneController() : nh("~"), pid1(1.0, 0.01, 0.05, 10.0), pid2(1.0, 0.01, 0.05, 10.0) {
+    DroneController() : nh("~"), pid1(0.0, 0.0, 0.0, 10.0), pid2(0.0, 0.0, 0.0, 10.0),  initialYawFound(false) {
         nh.param<std::string>("drone_id1", drone_id1, "flycrane");
         nh.param<std::string>("drone_id2", drone_id2, "flycrane1");
-        nh.param<double>("Mid_x", Mid_x, 2.0);
-        nh.param<double>("Mid_y", Mid_y, 1.0);
-        nh.param<double>("Mid_z", Mid_z, 1.0);
+        nh.getParam("Mid_x", Mid_x);
+        nh.getParam("Mid_y", Mid_y);
+        nh.getParam("Mid_z", Mid_z);
+        nh.getParam("kp", Kp);
+        nh.getParam("ki", Ki);
+        nh.getParam("kd", Kd);
+        // nh.getParam("inital_yaw_degrees", initial_yaw_degrees);
         nh.param<double>("Mid_yaw_end", Mid_yaw_end, 360.0); 
-        Mid_yaw_end_normalized_degrees = normalizeAngle(Mid_yaw_end * M_PI / 180.0) *180 /M_PI;
+        Mid_yaw_end_normalized_degrees = normalizeAngle(Mid_yaw_end * M_PI / 180.0) * 180 / M_PI;
         setupTimer();
         setupCommunication();
-        fetchInitialYaw();
+        pid1 = PIDController(Kp, Ki, Kd, 10.0);
+        pid2 = PIDController(Kp, Ki, Kd, 10.0);
     }
+
     double normalizeAngle(double angle) {
         while (angle > M_PI) angle -= 2.0 * M_PI;
         while (angle < -M_PI) angle += 2.0 * M_PI;
         return angle;
     }
     void fetchInitialYaw() {
-        bool initialYawFound = false;
-        while (!initialYawFound) {
+        if (initial_position_falcon1.x != 0.0000000 && initial_position_falcon2.x != 0.0000000) {
             auto msg = ros::topic::waitForMessage<nav_msgs::Odometry>(odometry_topic1.str(), nh, ros::Duration(5));
-            if (msg) {
-                double initial_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, 
-                                                        msg->pose.pose.orientation.y,
-                                                        msg->pose.pose.orientation.z,
-                                                        msg->pose.pose.orientation.w);
-                double initial_yaw_degrees = normalizeAngle(initial_yaw) * 180.0 / M_PI;
-                
-                Mid_yaw = initial_yaw_degrees;
-                if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees > 180.0) {
-                    Mid_yaw_increment = -30.0;  //bvb van -90 naar 180 graden
-                    Mid_yaw_end_normalized_degrees += -360.0;
-                } else if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees <= 180.0) {
-                    Mid_yaw_increment = 30.0;    // bvb can 0 naar 90 graden
-                } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees > 180.0) {
-                    Mid_yaw_increment = 30.0;    // bvb van 180 naar -90 graden
-                    Mid_yaw_end_normalized_degrees += 360.0;
-                } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees <= 180.0) {
-                    Mid_yaw_increment = -30.0;   // bvb van 90 naar 0 graden
-                }
-                ROS_INFO("Initial Yaw: %f degrees", initial_yaw_degrees);
-                ROS_INFO("End Yaw: %f degrees", Mid_yaw_end_normalized_degrees);
-                ROS_INFO("Mid_yaw_increment: %f", Mid_yaw_increment);
-                initialYawFound = true;
-            } else {
-                ROS_WARN("No odometry message received. Retrying in 1 second...");
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+            startX = (initial_position_falcon1.x + initial_position_falcon2.x) / 2;
+            startY = (initial_position_falcon1.y + initial_position_falcon2.y) / 2;
+            double dx = initial_position_falcon1.x - startX;
+            double dy = initial_position_falcon1.y - startY;
+            centerX = startX;
+            centerY = startY;
+            initial_yaw_degrees = atan2(dy, dx) * 180.0 / M_PI;
+            Mid_yaw = initial_yaw_degrees;
+            if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees > 180.0) {
+                Mid_yaw_increment = -30.0;  //bvb van -90 naar 180 graden
+                Mid_yaw_end_normalized_degrees += -360.0;
+            } else if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees <= 180.0) {
+                Mid_yaw_increment = 30.0;    // bvb can 0 naar 90 graden
+            } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees > 180.0) {
+                Mid_yaw_increment = 30.0;    // bvb van 180 naar -90 graden
+                Mid_yaw_end_normalized_degrees += 360.0;
+            } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees <= 180.0) {
+                Mid_yaw_increment = -30.0;   // bvb van 90 naar 0 graden
             }
+            ROS_INFO("Initial Yaw: %f degrees", initial_yaw_degrees);
+            ROS_INFO("End Yaw: %f degrees", Mid_yaw_end_normalized_degrees);
+            ROS_INFO("Mid_yaw_increment: %f", Mid_yaw_increment);
+            initialYawFound = true;
+        } else {
+            ROS_WARN("No odometry message received. Retrying in 1 second...");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
+        
     }
     
 
@@ -159,46 +166,50 @@ public:
     }
 
     void updateCallback(const ros::TimerEvent&) {
-        
-        if (initial_yaw_degrees < Mid_yaw_end_normalized_degrees) {
-            if (Mid_yaw >= Mid_yaw_end_normalized_degrees) {
-                Mid_yaw = Mid_yaw_end_normalized_degrees;
-                updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
-                ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
-                ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
-                ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
-                shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
-                update_timer.stop();
-            }
+        if (initialYawFound == true) {
+            if (initial_yaw_degrees < Mid_yaw_end_normalized_degrees) {
+                if (Mid_yaw >= Mid_yaw_end_normalized_degrees) {
+                    Mid_yaw = Mid_yaw_end_normalized_degrees;
+                    updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
+                    ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
+                    ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
+                    ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
+                    // shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
+                    update_timer.stop();
+                }
+                else {
+                    Mid_yaw += Mid_yaw_increment;
+                    ROS_INFO("Current yaw: %f", Mid_yaw);
+                    double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
+                    updatePositions(Mid_yaw_radians);
+                }
+            } 
             else {
-                Mid_yaw += Mid_yaw_increment;
-                ROS_INFO("Current yaw: %f", Mid_yaw);
-                double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
-                updatePositions(Mid_yaw_radians);
-            }
-        } 
-        else {
-            if (Mid_yaw <= Mid_yaw_end_normalized_degrees) {
-                Mid_yaw = Mid_yaw_end_normalized_degrees;
-                updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
-                ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
-                ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
-                ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
-                shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
-                update_timer.stop();
-            }
-            else {
-                Mid_yaw += Mid_yaw_increment;
-                ROS_INFO("Current yaw: %f", Mid_yaw);
-                double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
-                updatePositions(Mid_yaw_radians);
+                if (Mid_yaw <= Mid_yaw_end_normalized_degrees) {
+                    Mid_yaw = Mid_yaw_end_normalized_degrees;
+                    updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
+                    ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
+                    ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
+                    ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
+                    // shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
+                    update_timer.stop();
+                }
+                else {
+                    Mid_yaw += Mid_yaw_increment;
+                    ROS_INFO("Current yaw: %f", Mid_yaw);
+                    double Mid_yaw_radians = Mid_yaw * M_PI / 180.0;
+                    updatePositions(Mid_yaw_radians);
+                }
             }
         }
+        else {
+            fetchInitialYaw();
+        }
     }
-    void shutdownCallback(const ros::TimerEvent&) {
-        ROS_INFO("Shutdown after holding position.");
-        ros::shutdown();
-    }
+    // void shutdownCallback(const ros::TimerEvent&) {
+    //     ROS_INFO("Shutdown after holding position.");
+    //     ros::shutdown();
+    // }
     void updatePositions(double yaw_radians) {
         target_position.x = Mid_x + radius * cos(yaw_radians);
         target_position.y = Mid_y + radius * sin(yaw_radians);
@@ -214,24 +225,28 @@ public:
         geometry_msgs::TwistStamped velocity_command;
         velocity_command.header.stamp = ros::Time::now();
         velocity_command.twist = pid1.computeControl(target_position, msg->pose.pose.position, 1.0 / 50.0);
-        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-        velocity_command.twist.angular.z = pid1.computeYawControl(target_yaw, current_yaw, 1.0 / 50.0);
         vel_pub1.publish(velocity_command);
+        if (!initialYawFound) {
+            initial_position_falcon1 = msg->pose.pose.position;
+            fetchInitialYaw();
+        }
+        
     }
 
     void odometryCallback2(const nav_msgs::Odometry::ConstPtr& msg) {
         geometry_msgs::TwistStamped velocity_command;
         velocity_command.header.stamp = ros::Time::now();
         velocity_command.twist = pid2.computeControl(target_position1, msg->pose.pose.position, 1.0 / 50.0);
-        double current_yaw = getYawFromQuaternion(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-        velocity_command.twist.angular.z = pid2.computeYawControl(target_yaw1, current_yaw, 1.0 / 50.0);
         vel_pub2.publish(velocity_command);
+        if (!initialYawFound) {
+            initial_position_falcon2 = msg->pose.pose.position;
+        }
     }
 };
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "velocity_turn_and_move_node");
-    std::this_thread::sleep_for(std::chrono::seconds(4)); // Wacht 4 seconden voor takeoff
+    std::this_thread::sleep_for(std::chrono::seconds(1)); // Wacht 4 seconden voor takeoff
     DroneController controller;
     ros::spin();
     return 0;

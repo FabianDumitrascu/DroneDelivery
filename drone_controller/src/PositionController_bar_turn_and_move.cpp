@@ -16,7 +16,7 @@
 
 class TrajectoryCreator { // Class to create a trajectory
 public:
-    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false), initialPoseBarSet(false), deltaDistance(0.1), landingSequence(false){
+    TrajectoryCreator() : nh("~"), loopRate(1), initialPose1Set(false), initialPose2Set(false), initialPoseBarSet(true), deltaDistance(0.1), landingSequence(false){
         // Constructor
 
         // Read parameters
@@ -46,7 +46,6 @@ public:
         // Initialize the Subscriber
         odometrySub1 = nh.subscribe(subscribeTopic1, 10, &TrajectoryCreator::OdometryCallback1, this);
         odometrySub2 = nh.subscribe(subscribeTopic2, 10, &TrajectoryCreator::OdometryCallback2, this);
-        odometrySubBar = nh.subscribe(subscribeTopicBar, 10, &TrajectoryCreator::OdometryCallbackBar, this);
         
         ROS_INFO("Subscribed to odometry topics: %s, %s", subscribeTopic1.c_str(), subscribeTopic2.c_str());
 
@@ -139,15 +138,15 @@ private:
         }
     }
 
-    void OdometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
-        if (!initialPoseBarSet) {
-            initialPoseBar = msg->pose.pose;
-            initialPoseBarSet = true;
-            ROS_INFO("Initial pose of the bar: (%f, %f, %f)", initialPoseBar.position.x, initialPoseBar.position.y, initialPoseBar.position.z);
-        } else {
-            currentPoseBar = msg->pose.pose;
-        }
-    }
+    // void OdometryCallbackBar(const nav_msgs::Odometry::ConstPtr& msg) {
+    //     if (!initialPoseBarSet) {
+    //         initialPoseBar = msg->pose.pose;
+    //         initialPoseBarSet = true;
+    //         ROS_INFO("Initial pose of the bar: (%f, %f, %f)", initialPoseBar.position.x, initialPoseBar.position.y, initialPoseBar.position.z);
+    //     } else {
+    //         currentPoseBar = msg->pose.pose;
+    //     }
+    // }
 
 
 double calculateDistance(const geometry_msgs::Point& p1, const geometry_msgs::Point& p2) {
