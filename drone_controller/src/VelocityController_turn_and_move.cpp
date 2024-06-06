@@ -44,12 +44,6 @@ public:
         return twist;
     }
 
-    double computeYawControl(double target_yaw, double current_yaw, double dt) {
-        double error_yaw = normalizeAngle(target_yaw - current_yaw);
-        double yaw_rate = Kp * error_yaw;
-        return yaw_rate;
-    }
-
     double normalizeAngle(double angle) {
         while (angle > M_PI) angle -= 2.0 * M_PI;
         while (angle < -M_PI) angle += 2.0 * M_PI;
@@ -64,6 +58,7 @@ private:
     ros::Publisher vel_pub2;
     ros::Subscriber odom_sub1;
     ros::Subscriber odom_sub2;
+    ros::Subscriber odom_sub_bar;
     PIDController pid1;
     PIDController pid2;
     geometry_msgs::Point target_position;
@@ -80,17 +75,24 @@ private:
     double initial_yaw_degrees;
     double Mid_yaw_end_normalized_degrees;
     double Mid_yaw_end;
-    double radius = 1.0;
+    double radius = 0.55;
     double Kp, Ki, Kd;
     double startX, startY;
     double centerX, centerY;
+    double currentYawBar;
+    double etha_yaw, etha_translation;
     bool initialYawFound;
-    geometry_msgs::Point initial_position_falcon1;
-    geometry_msgs::Point initial_position_falcon2;
+    bool simulation;
+    bool Landing;
+    bool firstpositionsupdated;
+    double regenboogpaard;
+    geometry_msgs::Point initial_position_falcon1, initial_position_falcon2, current_position_bar;
+    geometry_msgs::Pose currentPoseBar;  // Use geometry_msgs::Pose for currentPoseBar
+    geometry_msgs::Point current_position_falcon1, current_position_falcon2;
     ros::Timer update_timer, shutdown_timer;
 
 public:
-    DroneController() : nh("~"), pid1(0.0, 0.0, 0.0, 10.0), pid2(0.0, 0.0, 0.0, 10.0),  initialYawFound(false) {
+    DroneController() : nh("~"), pid1(0.0, 0.0, 0.0, 10.0), pid2(0.0, 0.0, 0.0, 10.0),  initialYawFound(false), Landing(false), etha_yaw(0.0), etha_translation(0.0), regenboogpaard(0.0), simulation(false), firstpositionsupdated(false) {
         nh.param<std::string>("drone_id1", drone_id1, "flycrane");
         nh.param<std::string>("drone_id2", drone_id2, "flycrane1");
         nh.getParam("Mid_x", Mid_x);
@@ -99,8 +101,10 @@ public:
         nh.getParam("kp", Kp);
         nh.getParam("ki", Ki);
         nh.getParam("kd", Kd);
-        // nh.getParam("inital_yaw_degrees", initial_yaw_degrees);
+        nh.getParam("etha_yaw", etha_yaw);
+        nh.getParam("etha_translation", etha_translation);
         nh.param<double>("Mid_yaw_end", Mid_yaw_end, 360.0); 
+        nh.getParam("simulation", simulation);
         Mid_yaw_end_normalized_degrees = normalizeAngle(Mid_yaw_end * M_PI / 180.0) * 180 / M_PI;
         setupTimer();
         setupCommunication();
@@ -149,32 +153,42 @@ public:
 
     void setupCommunication() {
         velocity_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/velocity_command";
-        odometry_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/odometry";
         velocity_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/velocity_command";
-        odometry_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/odometry";
 
+        // odometry_topic1 << "/mocap/" << drone_id1 << "/agiros_pilot" << "/odometry";
+        // odometry_topic2 << "/mocap/" << drone_id2 << "/agiros_pilot" << "/odometry";
+
+        odometry_topic1 << "/" << drone_id1 << "/agiros_pilot" << "/odometry";
+        odometry_topic2 << "/" << drone_id2 << "/agiros_pilot" << "/odometry";
+        if (simulation){
+            odom_sub_bar = nh.subscribe("/bar/odometry_sensor1/odometry", 10, &DroneController::barCallbacksimulation, this);
+        }
+        if (!simulation){
+            odom_sub_bar = nh.subscribe("/mocap/bar_large/pose", 10, &DroneController::barCallback, this);
+        }
         vel_pub1 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic1.str(), 10);
         vel_pub2 = nh.advertise<geometry_msgs::TwistStamped>(velocity_topic2.str(), 10);
-
+        
         odom_sub1 = nh.subscribe<nav_msgs::Odometry>(odometry_topic1.str(), 10, &DroneController::odometryCallback1, this);
         odom_sub2 = nh.subscribe<nav_msgs::Odometry>(odometry_topic2.str(), 10, &DroneController::odometryCallback2, this);
     }
 
 
     void setupTimer() {
-        update_timer = nh.createTimer(ros::Duration(0.3), &DroneController::updateCallback, this);
+        update_timer = nh.createTimer(ros::Duration(0.5), &DroneController::updateCallback, this);
     }
-
+        double degreesToRadians(double degrees) {
+        return degrees * M_PI / 180.0;
+    }
     void updateCallback(const ros::TimerEvent&) {
-        if (initialYawFound == true) {
+        if (initialYawFound == true and Landing == false) {
             if (initial_yaw_degrees < Mid_yaw_end_normalized_degrees) {
                 if (Mid_yaw >= Mid_yaw_end_normalized_degrees) {
                     Mid_yaw = Mid_yaw_end_normalized_degrees;
                     updatePositions(Mid_yaw_end_normalized_degrees * M_PI / 180.0);
                     ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
                     ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
-                    ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
-                    // shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
+                    ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);
                     update_timer.stop();
                 }
                 else {
@@ -191,7 +205,6 @@ public:
                     ROS_INFO("Reached final yaw: %f", Mid_yaw_end_normalized_degrees);
                     ROS_INFO("last target position: (%f, %f, %f, %f)", target_position.x, target_position.y, target_position.z, target_yaw* 180 / M_PI);
                     ROS_INFO("last target position1: (%f, %f, %f, %f)", target_position1.x, target_position1.y, target_position1.z, target_yaw1* 180 / M_PI);   
-                    // shutdown_timer = nh.createTimer(ros::Duration(5), &DroneController::shutdownCallback, this, true);
                     update_timer.stop();
                 }
                 else {
@@ -203,32 +216,55 @@ public:
             }
         }
         else {
-            fetchInitialYaw();
+            FirstupdatePositions(initial_yaw_degrees * M_PI / 180.0);
+            if (firstpositionsupdated){
+                fetchInitialYaw();
+            }
         }
     }
-    // void shutdownCallback(const ros::TimerEvent&) {
-    //     ROS_INFO("Shutdown after holding position.");
-    //     ros::shutdown();
-    // }
+    double QuaternionToYaw(geometry_msgs::Quaternion q) {
+        double roll, pitch, yaw;
+        tf::Quaternion tf_q(q.x, q.y, q.z, q.w);
+        tf::Matrix3x3(tf_q).getRPY(roll, pitch, yaw);
+        return yaw;
+    }
     void updatePositions(double yaw_radians) {
         target_position.x = Mid_x + radius * cos(yaw_radians);
         target_position.y = Mid_y + radius * sin(yaw_radians);
-        target_position.z = Mid_z;
+        target_position.z = Mid_z+1;
         target_position1.x = Mid_x + radius * cos(yaw_radians + M_PI);
         target_position1.y = Mid_y + radius * sin(yaw_radians + M_PI);
-        target_position1.z = Mid_z;
+        target_position1.z = Mid_z+1;
         target_yaw = yaw_radians;
         target_yaw1 = yaw_radians;
+    }
+
+    void FirstupdatePositions(double yaw_radians) {
+        target_position.x = initial_position_falcon1.x;
+        target_position.y = initial_position_falcon1.y;
+        target_position.z = Mid_z+1;
+        target_position1.x = initial_position_falcon2.x;
+        target_position1.y = initial_position_falcon2.y;
+        target_position1.z = Mid_z+1;
+        target_yaw = yaw_radians;
+        target_yaw1 = yaw_radians;
+        if (target_position.z - current_position_falcon1.z < 0.1 and target_position1.z - current_position_falcon2.z < 0.1) {
+            firstpositionsupdated = true;
+            ROS_INFO("First positions updated");
+        }
     }
 
     void odometryCallback1(const nav_msgs::Odometry::ConstPtr& msg) {
         geometry_msgs::TwistStamped velocity_command;
         velocity_command.header.stamp = ros::Time::now();
         velocity_command.twist = pid1.computeControl(target_position, msg->pose.pose.position, 1.0 / 50.0);
-        vel_pub1.publish(velocity_command);
         if (!initialYawFound) {
             initial_position_falcon1 = msg->pose.pose.position;
             fetchInitialYaw();
+        }
+        else {
+            vel_pub1.publish(velocity_command);
+            current_position_falcon1 = msg->pose.pose.position;
         }
         
     }
@@ -237,11 +273,64 @@ public:
         geometry_msgs::TwistStamped velocity_command;
         velocity_command.header.stamp = ros::Time::now();
         velocity_command.twist = pid2.computeControl(target_position1, msg->pose.pose.position, 1.0 / 50.0);
-        vel_pub2.publish(velocity_command);
         if (!initialYawFound) {
             initial_position_falcon2 = msg->pose.pose.position;
         }
+        else {
+            vel_pub2.publish(velocity_command);
+            current_position_falcon2 = msg->pose.pose.position;
+        }
     }
+    
+    void barCallbacksimulation(const nav_msgs::Odometry::ConstPtr& msg) {
+        currentPoseBar = msg->pose.pose; 
+        geometry_msgs::Quaternion q = msg->pose.pose.orientation;
+        currentYawBar = QuaternionToYaw(q) * 180.0 / M_PI;
+        double error_yaw, error_translation;
+        error_yaw = currentYawBar - Mid_yaw_end;
+        error_translation = sqrt(pow(currentPoseBar.position.x - Mid_x, 2) + pow(currentPoseBar.position.y - Mid_y, 2));  // Access position members
+        // ROS_INFO("error_yaw: %f, error_translation: %f", error_yaw, error_translation);
+        if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation) { 
+            regenboogpaard += 0.1;
+            ROS_INFO("error_yaw: %f, error_translation: %f, regenboogpaard: %f", error_yaw, error_translation, regenboogpaard);
+            if (regenboogpaard >= 10.0) {  // Use >= to ensure the timer condition is met
+                Landscript();
+                Landing = true;
+            }
+        } else {
+            regenboogpaard = 0;
+        }
+    }
+
+    void barCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+        currentPoseBar = msg->pose; 
+        geometry_msgs::Quaternion q = msg->pose.orientation;
+        currentYawBar = QuaternionToYaw(q) * 180.0 / M_PI;
+        double error_yaw, error_translation;
+        error_yaw = currentYawBar - Mid_yaw_end;
+        error_translation = sqrt(pow(currentPoseBar.position.x - Mid_x, 2) + pow(currentPoseBar.position.y - Mid_y, 2));  // Access position members
+        // ROS_INFO("error_yaw: %f, error_translation: %f", error_yaw, error_translation);
+        if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation) { 
+            regenboogpaard += 0.01;
+            ROS_INFO("error_yaw: %f, error_translation: %f, regenboogpaard: %f", error_yaw, error_translation, regenboogpaard);
+            if (regenboogpaard >= 10.0) {  // Use >= to ensure the timer condition is met
+                Landscript();
+                Landing = true;
+            }
+        } else {
+            regenboogpaard = 0;
+        }
+    }
+
+    void Landscript() {
+        target_position.x = Mid_x + radius * cos(Mid_yaw_end * M_PI / 180.0);
+        target_position.y = Mid_y + radius * sin(Mid_yaw_end * M_PI / 180.0);
+        target_position.z = 0.5;
+        target_position1.x = Mid_x + radius * cos(Mid_yaw_end * M_PI / 180.0 + M_PI);
+        target_position1.y = Mid_y + radius * sin(Mid_yaw_end * M_PI / 180.0 + M_PI);
+        target_position1.z = 0.5;
+    }
+
 };
 
 int main(int argc, char** argv) {
