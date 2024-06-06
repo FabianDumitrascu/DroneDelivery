@@ -12,7 +12,9 @@
     <arg name="ki" default="0.0"/>
     <arg name="kd" default="0.0"/>
     <arg name="etha_yaw" default="10"/>
-    <arg name="etha_translation" default="0.05"/>    ]
+    <arg name="etha_translation" default="0.05"/>
+    <arg name="begin_yaw" default="0.0"/> <!-- New argument -->
+
     <arg name="simulation" default="true"/>
 
     <!-- Node for Command-->
@@ -33,6 +35,7 @@
             <param name="kd" value="$(arg kd)"/>
             <param name="etha_yaw" value="$(arg etha_yaw)"/>
             <param name="etha_translation" value="$(arg etha_translation)"/>
+            <param name="begin_yaw" value="$(arg begin_yaw)"/> <!-- New parameter -->
             <param name="simulation" value="$(arg simulation)"/>
         </node>
     </group>

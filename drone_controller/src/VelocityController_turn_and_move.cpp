@@ -84,7 +84,7 @@ private:
     bool initialYawFound;
     bool simulation;
     bool Landing;
-    bool firstpositionsupdated;
+    bool stop_movement;
     double regenboogpaard;
     geometry_msgs::Point initial_position_falcon1, initial_position_falcon2, current_position_bar;
     geometry_msgs::Pose currentPoseBar;  // Use geometry_msgs::Pose for currentPoseBar
@@ -92,7 +92,7 @@ private:
     ros::Timer update_timer, shutdown_timer;
 
 public:
-    DroneController() : nh("~"), pid1(0.0, 0.0, 0.0, 10.0), pid2(0.0, 0.0, 0.0, 10.0),  initialYawFound(false), Landing(false), etha_yaw(0.0), etha_translation(0.0), regenboogpaard(0.0), simulation(false), firstpositionsupdated(false) {
+    DroneController() : nh("~"), pid1(0.0, 0.0, 0.0, 10.0), pid2(0.0, 0.0, 0.0, 10.0), stop_movement(false), initialYawFound(false), Landing(false), etha_yaw(0.0), etha_translation(0.0), regenboogpaard(0.0), simulation(false) {
         nh.param<std::string>("drone_id1", drone_id1, "flycrane");
         nh.param<std::string>("drone_id2", drone_id2, "flycrane1");
         nh.getParam("Mid_x", Mid_x);
@@ -103,6 +103,7 @@ public:
         nh.getParam("kd", Kd);
         nh.getParam("etha_yaw", etha_yaw);
         nh.getParam("etha_translation", etha_translation);
+        nh.getParam("begin_yaw", initial_yaw_degrees);
         nh.param<double>("Mid_yaw_end", Mid_yaw_end, 360.0); 
         nh.getParam("simulation", simulation);
         Mid_yaw_end_normalized_degrees = normalizeAngle(Mid_yaw_end * M_PI / 180.0) * 180 / M_PI;
@@ -119,25 +120,21 @@ public:
     }
     void fetchInitialYaw() {
         if (initial_position_falcon1.x != 0.0000000 && initial_position_falcon2.x != 0.0000000) {
-            auto msg = ros::topic::waitForMessage<nav_msgs::Odometry>(odometry_topic1.str(), nh, ros::Duration(5));
-            startX = (initial_position_falcon1.x + initial_position_falcon2.x) / 2;
-            startY = (initial_position_falcon1.y + initial_position_falcon2.y) / 2;
-            double dx = initial_position_falcon1.x - startX;
-            double dy = initial_position_falcon1.y - startY;
-            centerX = startX;
-            centerY = startY;
-            initial_yaw_degrees = atan2(dy, dx) * 180.0 / M_PI;
+            // auto msg = ros::topic::waitForMessage<nav_msgs::Odometry>(odometry_topic1.str(), nh, ros::Duration(5));
+            // startX = (initial_position_falcon1.x + initial_position_falcon2.x) / 2;
+            // startY = (initial_position_falcon1.y + initial_position_falcon2.y) / 2;
+            // double dx = initial_position_falcon1.x - startX;
+            // double dy = initial_position_falcon1.y - startY;
+            // centerX = startX;
+            // centerY = startY;
+            // initial_yaw_degrees = atan2(dy, dx) * 180.0 / M_PI;
             Mid_yaw = initial_yaw_degrees;
-            if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees > 180.0) {
-                Mid_yaw_increment = -30.0;  //bvb van -90 naar 180 graden
-                Mid_yaw_end_normalized_degrees += -360.0;
-            } else if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees and Mid_yaw_end_normalized_degrees - initial_yaw_degrees <= 180.0) {
-                Mid_yaw_increment = 30.0;    // bvb can 0 naar 90 graden
-            } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees > 180.0) {
-                Mid_yaw_increment = 30.0;    // bvb van 180 naar -90 graden
-                Mid_yaw_end_normalized_degrees += 360.0;
-            } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees and initial_yaw_degrees - Mid_yaw_end_normalized_degrees <= 180.0) {
-                Mid_yaw_increment = -30.0;   // bvb van 90 naar 0 graden
+            if (Mid_yaw_end_normalized_degrees > initial_yaw_degrees) {
+                Mid_yaw_increment = 30.0;
+            } else if (Mid_yaw_end_normalized_degrees < initial_yaw_degrees) {
+                Mid_yaw_increment = -30.0;
+            } else {
+                Mid_yaw_increment = 0.0;
             }
             ROS_INFO("Initial Yaw: %f degrees", initial_yaw_degrees);
             ROS_INFO("End Yaw: %f degrees", Mid_yaw_end_normalized_degrees);
@@ -175,12 +172,18 @@ public:
 
 
     void setupTimer() {
-        update_timer = nh.createTimer(ros::Duration(0.5), &DroneController::updateCallback, this);
+        update_timer = nh.createTimer(ros::Duration(1), &DroneController::updateCallback, this);
     }
         double degreesToRadians(double degrees) {
         return degrees * M_PI / 180.0;
     }
     void updateCallback(const ros::TimerEvent&) {
+
+        if (stop_movement) {
+            ROS_WARN("Stopping the node due to proximity alert.");
+            ros::shutdown();
+            return;
+        }        
         if (initialYawFound == true and Landing == false) {
             if (initial_yaw_degrees < Mid_yaw_end_normalized_degrees) {
                 if (Mid_yaw >= Mid_yaw_end_normalized_degrees) {
@@ -216,10 +219,7 @@ public:
             }
         }
         else {
-            FirstupdatePositions(initial_yaw_degrees * M_PI / 180.0);
-            if (firstpositionsupdated){
-                fetchInitialYaw();
-            }
+            fetchInitialYaw();
         }
     }
     double QuaternionToYaw(geometry_msgs::Quaternion q) {
@@ -239,48 +239,55 @@ public:
         target_yaw1 = yaw_radians;
     }
 
-    void FirstupdatePositions(double yaw_radians) {
-        target_position.x = initial_position_falcon1.x;
-        target_position.y = initial_position_falcon1.y;
-        target_position.z = Mid_z+1;
-        target_position1.x = initial_position_falcon2.x;
-        target_position1.y = initial_position_falcon2.y;
-        target_position1.z = Mid_z+1;
-        target_yaw = yaw_radians;
-        target_yaw1 = yaw_radians;
-        if (target_position.z - current_position_falcon1.z < 0.1 and target_position1.z - current_position_falcon2.z < 0.1) {
-            firstpositionsupdated = true;
-            ROS_INFO("First positions updated");
-        }
-    }
-
     void odometryCallback1(const nav_msgs::Odometry::ConstPtr& msg) {
-        geometry_msgs::TwistStamped velocity_command;
-        velocity_command.header.stamp = ros::Time::now();
-        velocity_command.twist = pid1.computeControl(target_position, msg->pose.pose.position, 1.0 / 50.0);
-        if (!initialYawFound) {
-            initial_position_falcon1 = msg->pose.pose.position;
-            fetchInitialYaw();
-        }
-        else {
-            vel_pub1.publish(velocity_command);
-            current_position_falcon1 = msg->pose.pose.position;
+        geometry_msgs::Point next_position = msg->pose.pose.position;
+        
+        double distance_to_other_drone = sqrt(pow(next_position.x - current_position_falcon2.x, 2) +
+                                            pow(next_position.y - current_position_falcon2.y, 2) +
+                                            pow(next_position.z - current_position_falcon2.z, 2));
+        if (distance_to_other_drone < 0.5) { // Example threshold distance
+            ROS_WARN("Drones too close! Stopping movement. Distance: %f", distance_to_other_drone);
+            stop_movement = true;
         }
         
+        if (!stop_movement) {
+            geometry_msgs::TwistStamped velocity_command;
+            velocity_command.header.stamp = ros::Time::now();
+            velocity_command.twist = pid1.computeControl(target_position, next_position, 1.0 / 50.0);
+            if (!initialYawFound) {
+                initial_position_falcon1 = msg->pose.pose.position;
+                fetchInitialYaw();
+            } else {
+                vel_pub1.publish(velocity_command);
+                current_position_falcon1 = msg->pose.pose.position;
+            }
+        }
     }
 
     void odometryCallback2(const nav_msgs::Odometry::ConstPtr& msg) {
-        geometry_msgs::TwistStamped velocity_command;
-        velocity_command.header.stamp = ros::Time::now();
-        velocity_command.twist = pid2.computeControl(target_position1, msg->pose.pose.position, 1.0 / 50.0);
-        if (!initialYawFound) {
-            initial_position_falcon2 = msg->pose.pose.position;
+        geometry_msgs::Point next_position = msg->pose.pose.position;
+        
+        double distance_to_other_drone = sqrt(pow(next_position.x - current_position_falcon1.x, 2) +
+                                            pow(next_position.y - current_position_falcon1.y, 2) +
+                                            pow(next_position.z - current_position_falcon1.z, 2));
+        if (distance_to_other_drone < 0.5) { // Example threshold distance
+            ROS_WARN("Drones too close! Stopping movement. Distance: %f", distance_to_other_drone);
+            stop_movement = true;
         }
-        else {
-            vel_pub2.publish(velocity_command);
-            current_position_falcon2 = msg->pose.pose.position;
+        
+        if (!stop_movement) {
+            geometry_msgs::TwistStamped velocity_command;
+            velocity_command.header.stamp = ros::Time::now();
+            velocity_command.twist = pid2.computeControl(target_position1, next_position, 1.0 / 50.0);
+            if (!initialYawFound) {
+                initial_position_falcon2 = msg->pose.pose.position;
+            } else {
+                vel_pub2.publish(velocity_command);
+                current_position_falcon2 = msg->pose.pose.position;
+            }
         }
     }
+
     
     void barCallbacksimulation(const nav_msgs::Odometry::ConstPtr& msg) {
         currentPoseBar = msg->pose.pose; 
@@ -307,13 +314,13 @@ public:
         geometry_msgs::Quaternion q = msg->pose.orientation;
         currentYawBar = QuaternionToYaw(q) * 180.0 / M_PI;
         double error_yaw, error_translation;
-        error_yaw = currentYawBar - Mid_yaw_end;
+        error_yaw = 90 + currentYawBar - Mid_yaw_end;
         error_translation = sqrt(pow(currentPoseBar.position.x - Mid_x, 2) + pow(currentPoseBar.position.y - Mid_y, 2));  // Access position members
         // ROS_INFO("error_yaw: %f, error_translation: %f", error_yaw, error_translation);
         if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation) { 
             regenboogpaard += 0.01;
             ROS_INFO("error_yaw: %f, error_translation: %f, regenboogpaard: %f", error_yaw, error_translation, regenboogpaard);
-            if (regenboogpaard >= 10.0) {  // Use >= to ensure the timer condition is met
+            if (regenboogpaard >= 5.0) {  // Use >= to ensure the timer condition is met
                 Landscript();
                 Landing = true;
             }

@@ -29,9 +29,11 @@ public:
         odom_sub_falcon1 = nh.subscribe("/" + drone_id1 + "/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon1, this);
         odom_sub_falcon2 = nh.subscribe("/" + drone_id2 + "/agiros_pilot/odometry", 10, &CirclePathController::odometryCallbackFalcon2, this);
         if (simulation){
+            ROS_INFO("Subscribing to bar topic");
             odom_sub_bar = nh.subscribe("/bar/odometry_sensor1/odometry", 10, &CirclePathController::barCallbacksimulation, this);
         }
         if (!simulation){
+            ROS_INFO("Subscribing to mocap topic");
             odom_sub_bar = nh.subscribe("/mocap/bar_large/pose", 10, &CirclePathController::barCallback, this);
         }
 
@@ -102,7 +104,7 @@ private:
         double error_yaw, error_translation;
         error_yaw = currentYawBar - end_angle_degrees;
         error_translation = sqrt(pow(currentPoseBar.position.x - target_x, 2) + pow(currentPoseBar.position.y - target_y, 2));  // Access position members
-        ROS_INFO("error_yaw: %f, error_translation: %f", error_yaw, error_translation);
+        // ROS_INFO("error_yaw: %f, error_translation: %f", error_yaw, error_translation);
         if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation) { 
             regenboogpaard += 0.1;
             ROS_INFO("error_yaw: %f, error_translation: %f, regenboogpaard: %f", error_yaw, error_translation, regenboogpaard);
@@ -119,13 +121,13 @@ private:
         geometry_msgs::Quaternion q = msg->pose.orientation;
         currentYawBar = QuaternionToYaw(q) * 180.0 / M_PI;
         double error_yaw, error_translation;
-        error_yaw = currentYawBar - end_angle_degrees;
+        error_yaw = 90 + currentYawBar - end_angle_degrees;
         error_translation = sqrt(pow(currentPoseBar.position.x - target_x, 2) + pow(currentPoseBar.position.y - target_y, 2));  // Access position members
-
+        // ROS_INFO("error_yaw: %f, error_translation: %f, regenboogpaard: %f", error_yaw, error_translation, regenboogpaard);
         if (fabs(error_yaw) < etha_yaw && error_translation < etha_translation) { 
             regenboogpaard += 0.01;
             ROS_INFO("error_yaw: %f, error_translation: %f, regenboogpaard: %f", error_yaw, error_translation, regenboogpaard);
-            if (regenboogpaard >= 10.0) {  // Use >= to ensure the timer condition is met
+            if (regenboogpaard >= 5.0) {  // Use >= to ensure the timer condition is met
                 Landscript();
             }
         } else {
@@ -158,14 +160,12 @@ private:
             end_angle_degrees = normalizeEndAngleDegrees(end_angle_degrees);
             start_angle_degrees = atan2(dy, dx) * 180.0 / M_PI; // Deze is sowieso tussen -180 en 180 
             angle_degrees = start_angle_degrees;
-            if (end_angle_degrees > start_angle_degrees && end_angle_degrees - start_angle_degrees > 180.0) {
-                degree_increment = -increment_degrees;  //bvb van -90 naar 180 graden
-            } else if (end_angle_degrees > start_angle_degrees && end_angle_degrees - start_angle_degrees <= 180.0) {
-                degree_increment = increment_degrees;    // bvb can 0 naar 90 graden
-            } else if (end_angle_degrees < start_angle_degrees && end_angle_degrees - start_angle_degrees > 180.0) {
-                degree_increment = increment_degrees;    // bvb van 180 naar -90 graden
-            } else if (end_angle_degrees < start_angle_degrees && end_angle_degrees - start_angle_degrees <= 180.0) {
-                degree_increment = -increment_degrees;   // bvb van 90 naar 0 graden
+            if (end_angle_degrees > start_angle_degrees) {
+                degree_increment = increment_degrees; 
+            } else if (end_angle_degrees < start_angle_degrees) {
+                degree_increment = -increment_degrees; 
+            } else {
+                degree_increment = 0.0;
             }
             if (end_angle_degrees - start_angle_degrees == 0.0) {
                 increment_x = target_x - startX;
