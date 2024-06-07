@@ -245,19 +245,12 @@ private:
         new_pose_falcon2.pose.position.x = centerX + radius * cos(angle_rad + M_PI);
         new_pose_falcon2.pose.position.y = centerY + radius * sin(angle_rad + M_PI);
         new_pose_falcon2.pose.position.z = centerZ + 1.0;
-        
-        // Orientation
-        // double half_angle_rad = angle_rad / 2;
-        // new_pose_falcon1.pose.orientation.z = sin(half_angle_rad);
-        // new_pose_falcon1.pose.orientation.w = cos(half_angle_rad);
-        // new_pose_falcon2.pose.orientation.z = sin(half_angle_rad + M_PI);
-        // new_pose_falcon2.pose.orientation.w = cos(half_angle_rad + M_PI);
 
         pose_pub_falcon1.publish(new_pose_falcon1);
         pose_pub_falcon2.publish(new_pose_falcon2);
 
         ROS_INFO("Updated angle: %f", angle_degrees);
-        ROS_INFO("Center position: x=%f, y=%f, z-%f", centerX, centerY, centerZ);
+        ROS_INFO("Center position: x=%f, y=%f, z=%f", centerX, centerY, centerZ);
     }
 
     double degreesToRadians(double degrees) {
