@@ -29,13 +29,13 @@ int main(int argc, char** argv) {
     }
 
     // // Sleep to give ROS time to set up the connection
-    // ros::Duration(0.5).sleep(); 
-    ros::Duration(1).sleep(); 
+    ros::Duration(0.5).sleep(); 
+    // ros::Duration(1).sleep(); 
     std_msgs::Empty msg;
     forcehover_pub_1.publish(msg);
     forcehover_pub_2.publish(msg);
 
-    ros::Duration(2).sleep(); 
+    // ros::Duration(2).sleep(); 
     // Publish the land command
     land_pub_1.publish(msg);
     land_pub_2.publish(msg);

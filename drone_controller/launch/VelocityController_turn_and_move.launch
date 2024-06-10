@@ -2,21 +2,23 @@
     <!-- Default arguments -->
     <arg name="drone_id1" default="falcon"/>
     <arg name="drone_id2" default="$(arg drone_id1)1"/> 
-    <arg name="drone_name_1" default="falcon"/>
-    <arg name="drone_name_2" default="$(arg drone_name_1)1"/>
+    <arg name="drone_name_1" default="f$(arg drone_id1)"/>
+    <arg name="drone_name_2" default="$$(arg drone_id2)"/>
     <arg name="Mid_x" default="1.0"/>
     <arg name="Mid_y" default="1.0"/>
-    <arg name="Mid_z" default="2.0"/>
+    <arg name="Mid_z" default="0.5"/>
     <arg name="Mid_yaw_end" default="0.0"/>
-    <arg name="kp" default="0.6"/>
-    <arg name="ki" default="0.01"/>
-    <arg name="kd" default="0.03"/>
+    <arg name="kp" default="0.1"/>
+    <arg name="ki" default="0.0"/>
+    <arg name="kd" default="0.0"/>
+    <arg name="etha_yaw" default="10"/>
+    <arg name="etha_translation" default="0.05"/>
+    <arg name="begin_yaw" default="0.0"/> <!-- New argument -->
 
+    <arg name="simulation" default="true"/>
 
     <!-- Node for Command-->
-    <!-- Include the takeoff launch file -->
-    <include file="$(find drone_controller)/launch/takeoff_2_drones.launch" />
-    <!-- After takeoff, initiate the Velocity control -->
+
     <group ns="BEP">
         <node name="Velocity_turn_and_move_node"
               pkg="drone_controller"
@@ -31,8 +33,10 @@
             <param name="kp" value="$(arg kp)"/>
             <param name="ki" value="$(arg ki)"/>
             <param name="kd" value="$(arg kd)"/>
+            <param name="etha_yaw" value="$(arg etha_yaw)"/>
+            <param name="etha_translation" value="$(arg etha_translation)"/>
+            <param name="begin_yaw" value="$(arg begin_yaw)"/> <!-- New parameter -->
+            <param name="simulation" value="$(arg simulation)"/>
         </node>
     </group>
 </launch>
-
-
